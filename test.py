@@ -1,7 +1,3 @@
-x = {
-    "a": 'one',
-    "b": 'two',
-    "c": 'three'
-}
+x: list[int]
 
-print('c' in list(x.keys()))
+x = 'a'

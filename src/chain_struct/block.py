@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 ####################################
 ## Block Class
@@ -23,7 +24,7 @@ class Block():
 
 
         self.block_item = {
-            "timeStamp": str(self.timestamp),
+            "timestamp": str(self.timestamp),
             "transactions": tmp_tx,
             "prev_hash": self.prev_hash,
             "hash": self.hash
@@ -40,9 +41,9 @@ class Block():
             self.hash = self.getHash()
         # print("Block successfull mined!!")
     
-    # def toJSON(self):
-    #     return json.dumps(self, default=lambda o: o.__dict__, 
-    #         sort_keys=True, indent=4)
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, 
+            sort_keys=True, indent=4)
 
     def __str__(self):
         # return {
