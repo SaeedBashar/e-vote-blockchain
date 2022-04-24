@@ -3,8 +3,8 @@ from time import time
 from urllib.parse import urlparse
 import requests as rq
 
-from block import Block
-from transaction import Transaction
+from src.chain_struct.block import Block
+from src.chain_struct.transaction import Transaction
 
 
 ##################################
@@ -12,14 +12,19 @@ from transaction import Transaction
 
 class Blockchain():
     def __init__(self) -> None:
-        self.chain : list(Block) = []
+        self.chain : list(Block) = [{
+            'hash': '0000aa8a027447a360b8884f1f80f3b467a4c52182a25469e95710a5cabec4f7',
+            'prev_hash': '0',
+            'timestamp': '0',
+            'transactions': [Transaction(0, 0, {'fv':0, 'pv':0}, 'init_tx').tx_item]
+        }]
         self.dif = 4
         self.pending_tx = []
         self.nodes_list = set()
-        self.add_block([Transaction(0, 0, {'fv':0, 'pv':0}, 'init_tx')])
+        # self.add_block([Transaction(0, 0, {'fv':0, 'pv':0}, 'init_tx')])
 
     def add_block(self, tx_arr):
-        block: Block = Block(time(), tx_arr)
+        block: Block = Block(time(), tx_arr) if len(self.chain) != 0 else Block(0, tx_arr)
         block.prev_hash = self.chain[-1].hash if len(self.chain) != 0 else 0x0
         block.mineBlock(self.dif)
         block.setBlock()
