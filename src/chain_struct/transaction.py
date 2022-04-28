@@ -3,8 +3,7 @@
 ## Transaction Class
 
 class Transaction():
-    def __init__(self, t, voter_addr, candidates, tp) -> None:
-        self.tx_type = tp
+    def __init__(self, t, voter_addr, candidates) -> None:
         self.timestamp = t
         self.voter_addr = voter_addr
         self.voted = False
@@ -16,7 +15,6 @@ class Transaction():
 
     def set_transaction(self):
         self.tx_item = {
-            "tx_type": self.tx_type,
             "timestamp": self.timestamp,
             "voter_addr" : self.voter_addr,
             "voted" : self.voted,

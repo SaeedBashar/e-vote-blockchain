@@ -16,7 +16,7 @@ class Blockchain():
             'hash': '0000aa8a027447a360b8884f1f80f3b467a4c52182a25469e95710a5cabec4f7',
             'prev_hash': '0',
             'timestamp': '0',
-            'transactions': [Transaction(0, 0, {'fv':0, 'pv':0}, 'init_tx').tx_item]
+            'transactions': [Transaction(0, 0, {'fv':0, 'pv':0}).tx_item]
         }]
         self.dif = 4
         self.pending_tx = []
@@ -31,8 +31,8 @@ class Blockchain():
 
         self.chain.append(block)
 
-    def add_transaction(self, t, va, cand, tp):
-        tx = Transaction(t, va, cand, tp)
+    def add_transaction(self, t, va, cand):
+        tx = Transaction(t, va, cand)
         self.pending_tx.append(tx)
 
     def tx_to_add_block(self):

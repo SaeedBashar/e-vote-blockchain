@@ -16,12 +16,7 @@ class Block():
         tmp_tx = []
         for tx in self.transactions:
             for item in tx:
-                # if item['type'] == 'init_tx':
-                #     tmp_tx.append(tx)
-                # if item['type'] == 'block_tx':
-                #     tmp_tx.append(item.tx_item)
                 tmp_tx.append(item.tx_item)
-
 
         self.block_item = {
             "timestamp": str(self.timestamp),
