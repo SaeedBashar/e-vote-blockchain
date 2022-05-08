@@ -1,15 +1,19 @@
+import json
+from multiprocessing.sharedctypes import Value
 import socket
 import time
 import threading
 import random
 import hashlib
+from src.chain_struct.block import Block
+from src.chain_struct.transaction import Transaction
 
 from src.node_pack.node_connection import Node_connection
 from src.chain_struct.blockchain import Blockchain
 
 class Node(threading.Thread):
 
-    def __init__(self, addr, port, id=None, callback=None, max_connections=0):
+    def __init__(self, addr, port, id=None, callback=None, max_connections=10):
         
         super(Node, self).__init__()
 
@@ -77,7 +81,7 @@ class Node(threading.Thread):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.addr, self.port))
         self.sock.settimeout(10.0)
-        self.sock.listen(1)
+        self.sock.listen()
         print(f"[LISTENING] Node listening on {self.addr}:{self.port}")
 
     def print_connections(self):
@@ -123,7 +127,8 @@ class Node(threading.Thread):
             self.debug_print("[CONNECTING]: Connecting to node %s:%s..." % (addr, port))
             sock.connect((addr, port))
 
-            sock.send((self.id + ":" + str(self.port)).encode('utf-8')) 
+            sock.send((self.id).encode('utf-8')) 
+            # sock.send((self.id + ":" + str(self.port)).encode('utf-8')) 
             connected_node_id = sock.recv(4096).decode('utf-8')
 
             for node in self.nodes_inbound:
@@ -186,6 +191,24 @@ class Node(threading.Thread):
                     self.debug_print("[REMOVING]: Removing node (" + node_to_check["addr"] + ":" + str(node_to_check["port"]) + ") from the reconnection list!")
                     self.reconnect_to_nodes.remove(node_to_check)
 
+    def replace_chain(self):
+        connected_nodes = []
+      
+        for n in self.nodes_inbound + self.nodes_outbound:
+            if len(connected_nodes) != 0:
+                for nd in connected_nodes:
+                    if n.addr == nd.addr and n.port == nd.port:
+                        break
+                else:
+                    connected_nodes.append(n)
+            else:
+                connected_nodes.append(n)
+
+        chain_replaced = self.blockchain.replace_chain(self, connected_nodes)
+    
+        return chain_replaced
+
+        
     def run(self):
         while not self.terminate_flag.is_set(): 
             try:
@@ -194,10 +217,12 @@ class Node(threading.Thread):
 
                 self.debug_print("Total inbound connections:" + str(len(self.nodes_inbound)))
 
-                if self.max_connections == 0 or len(self.nodes_inbound) < self.max_connections:
+                if len(self.nodes_inbound) <= self.max_connections:
                     connected_node_port = client_address[1] 
                     connected_node_id   = connection.recv(4096).decode('utf-8')
+                    print('from ' + connected_node_id)
                     if ":" in connected_node_id:
+                        print('entered there')
                         (connected_node_id, connected_node_port) = connected_node_id.split(':') 
                     connection.send(self.id.encode('utf-8')) 
 
@@ -274,6 +299,71 @@ class Node(threading.Thread):
             self.callback("outbound_node_disconnected", self, node_conn, {})
 
     def node_message(self, node_conn, data):
+
+        print(json.dumps(data))
+        keys_in_data = [x[1] for x in enumerate(data)]
+
+        if 'type' in keys_in_data:
+            tmp_chain_part = []
+
+            if data['type'] == 'chain_request':
+                for block in enumerate(self.blockchain.chain):
+                    if not isinstance(block[1], dict):
+                        if block[1].hash == data['last_block_hash']:
+                            tmp_index = block[0]
+                            break
+                    else:
+                        if block[1]['hash'] == data['last_block_hash']:
+                            tmp_index = block[0]
+                            break
+
+                for block in self.blockchain.chain[tmp_index + 1 : ]:
+                    tmp_chain_part.append(block.block_item)
+
+                node_conn.send({
+                    'type': 'chain_response',
+                    'chain_part': tmp_chain_part, # Only part of the chain is sent
+                    'insert_index': tmp_index + 1
+                    },
+                    compression='bzip2')
+            elif data['type'] == 'chain_response':
+                node_conn.cont = True
+                
+                try:
+                    for b_item in data['chain_part']:
+                        tmp_txs = []
+                        for t_item in b_item['transactions']:
+                            tmp_txs.append(Transaction(
+                                                        t_item['timestamp'],
+                                                        t_item['voter_addr'],
+                                                        t_item['voted_candidates']
+                                                    )
+                                        )
+
+                        tmp_block = Block(
+                                            b_item['timestamp'],
+                                            tmp_txs,
+                                            b_item['prev_hash']
+                                    )
+                        tmp_block.hash = b_item['hash']
+                        tmp_block.nonce = b_item['nonce']
+
+                        self.blockchain.chain.append(tmp_block)
+                    else:
+                        print("Chain is Updated Successfully")
+                except Exception as e:
+                    print("An error occured while updating chain")
+                    raise e
+    
+            elif data['type'] == 'chain_length_request':
+                node_conn.send({
+                    'type': 'chain_length_response', 
+                    'length': len(self.blockchain.chain)})
+            elif data['type'] == 'chain_length_response':
+                # use to continue replace_chain method in blockchain class
+                node_conn.response_data = data
+                node_conn.cont = True
+
         self.debug_print("[RECEIVED MESSAGE]: Data from node %s:[%s]" % (node_conn.addr, str(data)))
         if self.callback is not None:
             self.callback("node_message", self, node_conn, data)

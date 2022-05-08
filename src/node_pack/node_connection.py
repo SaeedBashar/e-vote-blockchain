@@ -31,6 +31,10 @@ class Node_connection(threading.Thread):
 
         # Use socket timeout to determine problems with the connection
         self.sock.settimeout(10.0)
+
+        # Variables used in start_wait method
+        self.cont = False
+        self.response_data = None
         
         self.node.debug_print("[NEW CONNECTION]: Started with node %s:%s" % (self.addr, str(self.port)))
 
@@ -51,7 +55,7 @@ class Node_connection(threading.Thread):
                 self.node.debug_print("[UNKNOWN COMPRESSION]: Compression type unknown")
 
         except Exception as e:
-            self.node.debug_print("compress: exception: " + str(e))
+            self.node.debug_print("[COMPRESSION ERROR]: " + str(e))
 
         self.node.debug_print(data + ":compress:b64encode:" + str(compressed))
         self.node.debug_print(data + ":compress:compression:" + str(int(10000*len(compressed)/len(data))/100) + "%")
@@ -128,8 +132,10 @@ class Node_connection(threading.Thread):
         self.terminate_flag.set()
 
     def parse_packet(self, packet):
-        if packet.find(self.COMPR_CHAR) != -1: # Check if packet was compressed
-            packet = self.decompress(packet[0:-1])
+        
+        compression_pos = packet.find(self.COMPR_CHAR)
+        if compression_pos != -1: # Check if packet was compressed
+            packet = self.decompress(packet[0:compression_pos])
 
         try:
             packet_decoded = packet.decode('utf-8')
@@ -142,6 +148,16 @@ class Node_connection(threading.Thread):
 
         except UnicodeDecodeError:
             return packet
+
+
+    def start_wait(self):
+
+        if self.cont:
+            return
+        time.sleep(1)
+        self.cont = True
+        return
+
 
     def run(self):
                  
