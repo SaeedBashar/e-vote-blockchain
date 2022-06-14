@@ -1,5 +1,4 @@
 import json
-from multiprocessing.sharedctypes import Value
 import socket
 import time
 import threading
@@ -127,8 +126,7 @@ class Node(threading.Thread):
             self.debug_print("[CONNECTING]: Connecting to node %s:%s..." % (addr, port))
             sock.connect((addr, port))
 
-            sock.send((self.id).encode('utf-8')) 
-            # sock.send((self.id + ":" + str(self.port)).encode('utf-8')) 
+            sock.send((self.id + ":" + str(self.port)).encode('utf-8')) 
             connected_node_id = sock.recv(4096).decode('utf-8')
 
             for node in self.nodes_inbound:
@@ -208,6 +206,18 @@ class Node(threading.Thread):
     
         return chain_replaced
 
+    def extract_chain_part(self, b_hash):
+        tmp_chain_part = []
+        tmp_index = None
+        for block in enumerate(self.blockchain.chain):
+            if block[1].hash == b_hash:
+                tmp_index = block[0]
+                break
+
+        for block in self.blockchain.chain[tmp_index + 1 : ]:
+            tmp_chain_part.append(block.block_item)
+
+        return tmp_chain_part
         
     def run(self):
         while not self.terminate_flag.is_set(): 
@@ -220,9 +230,8 @@ class Node(threading.Thread):
                 if len(self.nodes_inbound) <= self.max_connections:
                     connected_node_port = client_address[1] 
                     connected_node_id   = connection.recv(4096).decode('utf-8')
-                    print('from ' + connected_node_id)
+                    
                     if ":" in connected_node_id:
-                        print('entered there')
                         (connected_node_id, connected_node_port) = connected_node_id.split(':') 
                     connection.send(self.id.encode('utf-8')) 
 
@@ -304,18 +313,14 @@ class Node(threading.Thread):
         keys_in_data = [x[1] for x in enumerate(data)]
 
         if 'type' in keys_in_data:
-            tmp_chain_part = []
 
             if data['type'] == 'chain_request':
+                tmp_chain_part = []
+                tmp_index = None
                 for block in enumerate(self.blockchain.chain):
-                    if not isinstance(block[1], dict):
-                        if block[1].hash == data['last_block_hash']:
-                            tmp_index = block[0]
-                            break
-                    else:
-                        if block[1]['hash'] == data['last_block_hash']:
-                            tmp_index = block[0]
-                            break
+                    if block[1].hash == data['last_block_hash']:
+                        tmp_index = block[0]
+                        break
 
                 for block in self.blockchain.chain[tmp_index + 1 : ]:
                     tmp_chain_part.append(block.block_item)
@@ -328,7 +333,7 @@ class Node(threading.Thread):
                     compression='bzip2')
             elif data['type'] == 'chain_response':
                 node_conn.cont = True
-                
+            
                 try:
                     for b_item in data['chain_part']:
                         tmp_txs = []
@@ -354,6 +359,8 @@ class Node(threading.Thread):
                 except Exception as e:
                     print("An error occured while updating chain")
                     raise e
+
+                print('From chain response ' + self.blockchain.chain)
     
             elif data['type'] == 'chain_length_request':
                 node_conn.send({
@@ -386,6 +393,3 @@ class Node(threading.Thread):
 
     def __str__(self):
         return 'Node: {}:{}'.format(self.addr, self.port)
-
-    def __repr__(self):
-        return '<Node {}:{} id: {}>'.format(self.addr, self.port, self.id)

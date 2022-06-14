@@ -1,8 +1,11 @@
 
+import json
 import time as tm
+from pprint import pprint
 from time import time
 from urllib.parse import urlparse
 import threading
+import requests as rq
 
 from src.chain_struct.block import Block
 from src.chain_struct.transaction import Transaction
@@ -13,20 +16,20 @@ from src.chain_struct.transaction import Transaction
 
 class Blockchain():
     def __init__(self) -> None:
-        self.chain : list(Block) = [{
-            'hash': '0000aa8a027447a360b8884f1f80f3b467a4c52182a25469e95710a5cabec4f7',
-            'prev_hash': '0',
-            'timestamp': '0',
-            'transactions': [Transaction(0, 0, {'fv':0, 'pv':0}).tx_item]
-        }]
+        self.chain : list(Block) = []
         self.dif = 4
         self.pending_tx = []
-        # self.nodes_list = set()
-        # self.add_block([Transaction(0, 0, {'fv':0, 'pv':0}, 'init_tx')])
+        self.create_genesis_block()
+      
+    def create_genesis_block(self):
+        block = Block('123456789',[])
+        block.prev_hash = '0' * 64
+        block.mine_block(self.dif)
+        self.chain.append(block)
 
     def add_block(self, tx_arr):
         block: Block = Block(time(), tx_arr)
-        block.prev_hash = self.chain[-1].hash if len(self.chain) > 1 else self.chain[-1]['hash']
+        block.prev_hash = self.chain[-1].hash
         block.mine_block(self.dif)
 
         self.chain.append(block)
@@ -49,10 +52,6 @@ class Blockchain():
             tmp_tx.append(self.pending_tx[tmp_i])
             self.pending_tx.pop(tmp_i)
         return tmp_tx
-
-    # def add_node(self, addr):
-    #     parsed_url = urlparse(addr)
-    #     self.nodes_list.add(parsed_url.netloc)
 
     def replace_chain(self, node, node_conn_list):
         network = node_conn_list
@@ -77,34 +76,54 @@ class Blockchain():
             print("None of the nodes responded")
             return False
 
-        conn.response_data = None
-        conn.cont = False
-        node.send_to_node(node_with_longest_chain, 
-                          {
-                              'type': 'chain_request', 
-                              'client_chain_length': len(node.blockchain.chain),
-                              'last_block_hash': node.blockchain.chain[-1].hash if len(node.blockchain.chain) > 1 else node.blockchain.chain[-1]['hash']
-                          },
-                          'bzip2'
-                        )
-        return True
-            
-        # TODO: Possible alternative
-        # network = node_conn_list
-        # longest_chain = None
-        # max_length = len(node.blockchain.chain)
-        # for conn in network:
-        #     response = rq.get(f'http://{conn.addr}:{conn.port}/get_chain')
-        #     if response.status_code == 200:
-        #         length = int(response.json()['length'])
-        #         chain = response.json()['chain']
-        #         if length > max_length and self.is_chain_valid(chain):
-        #             max_length = length
-        #             longest_chain = chain
-        # if longest_chain:
-        #     self.chain = longest_chain
-        #     return True
-        # return False
+        conn = node_with_longest_chain
+        
+        payload = {'hash': node.blockchain.chain[-1].hash}
+        response = rq.get(f'http://{conn.addr}:{str(int(conn.port) - 1000)}/get_chain', params=payload)
+
+        if response.status_code == 200:
+                
+                chain = response.json()['chain']
+                tmp_chain = []
+                try:
+                    for b_item in chain:
+                        tmp_txs = []
+                        for t_item in b_item['transactions']:
+                            tmp_txs.append(Transaction(
+                                                        t_item['timestamp'],
+                                                        t_item['voter_addr'],
+                                                        t_item['voted_candidates']
+                                                    )
+                                        )
+
+                        tmp_block = Block(
+                                            b_item['timestamp'],
+                                            tmp_txs,
+                                            b_item['prev_hash']
+                                    )
+                
+                        tmp_block.nonce = b_item['nonce']
+                        tmp_block.hash = b_item['hash']
+                        tmp_block.set_block()
+
+                        tmp_chain.append(tmp_block)
+                        
+                    else:
+                        if self.is_chain_valid(tmp_chain):
+                            node.blockchain.chain.extend(tmp_chain)
+                            print("Chain is Updated Successfully")
+                            return True
+                        else:
+                            print("Chain is not valid")
+                            return False
+
+                    
+                except Exception as e:
+                    print("An error occured while updating chain")
+                    raise e
+
+        return False
+                   
 
     def is_chain_valid(self, chain: list[Block]):
         prev_block = chain[0]
@@ -114,7 +133,7 @@ class Blockchain():
             block = chain[cur_block_i]
             if block.prev_hash != prev_block.hash:
                 return False
-            if block.hash != block.getHash():
+            if block.hash != block.get_hash():
                 return False
             
             cur_block_i += 1

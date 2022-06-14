@@ -12,8 +12,8 @@ class Transaction():
         self.voter_addr = voter_addr
         self.voted = False
         self.voted_candidates = {
-                "president": candidates['pv'],
-                "finance": candidates['fv']
+                "pv": candidates['pv'],
+                "fv": candidates['fv']
             }
         self.tx_hash = self.get_hash()
         self.set_transaction()

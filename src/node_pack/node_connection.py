@@ -150,13 +150,13 @@ class Node_connection(threading.Thread):
             return packet
 
 
-    def start_wait(self):
+    # def start_wait(self):
 
-        if self.cont:
-            return
-        time.sleep(1)
-        self.cont = True
-        return
+    #     if self.cont:
+    #         return
+    #     time.sleep(1)
+    #     self.cont = True
+    #     return
 
 
     def run(self):
