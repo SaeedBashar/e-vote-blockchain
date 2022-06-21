@@ -46,7 +46,7 @@ class Block:
         }
 
     def get_hash(self):
-        str_val : str = self.index + self.timestamp + self.data + self.difficulty + self.prev_hash + self.nonce
+        str_val : str = self.index + self.timestamp + json.dumps(self.data) + self.difficulty + self.prev_hash + self.nonce
         return SHA256.new(str_val.encode('utf8'))
     
     def mine_block(self, dif):
@@ -65,7 +65,7 @@ class Block:
         reward = 0
         balances = {}
 
-        for tx in block.data:
+        for tx in block['data']:
             if tx['from_addr'] != pub_key:
                 if balances[tx['from_add']] is None:
                     balances[tx['from_addr']] = (state[tx['from_addr']]['balance'] if state[tx['from_addr']] else 0) - tx['value'] - tx['gas']

@@ -30,7 +30,7 @@ class Blockchain:
         self.difficulty = 4
         self.transactions = []
 
-        self.blockTime = 30000
+        self.block_time = 30000
         self.reward = 297
 
         self.state = {

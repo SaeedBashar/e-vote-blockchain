@@ -18,29 +18,29 @@ def change_state(new_block, state):
                 'storage': {}
             }
 
-            if (tx.to.startsWith("SC")):
+            if (tx.to_addr.startswith("SC")):
                 state[tx.from_addr]['body'] = tx.to_addr
             
-        elif (tx.to.startsWith("SC") and state[tx.to].body == None):
+        elif (tx.to_addr.startswith("SC") and state[tx.to_addr]['body'] == ""):
             state[tx.from_addr]['body'] = tx.to_addr
         
 
         state[tx.to_addr]['balance'] += tx.value
-        state[tx.from_addr]['balance'] -= tx.amount + tx.gas
+        state[tx.from_addr]['balance'] -= (tx.amount + tx.gas)
 
         state[tx.from_addr]['timestamps'].append(tx.timestamp)
 
-def trigger_contract(new_block, state, chain, log):
+def trigger_contract(new_block, state, blk_chain, log):
     for tx in new_block.data:
-        if state[tx.to]['body'] != "":
+        if state[tx.to_addr]['body'] != "":
             try:
                 [state[tx.to_addr]['storage'], state[tx.to_addr]['balance']] = mud_script(
                     state[tx.to_addr]['body'].replace("SC", ""),
-                    state[tx.to_addr].storage, 
-                    state[tx.to_addr].balance - tx.value,
+                    state[tx.to_addr]['storage'], 
+                    state[tx.to_addr]['balance'] - tx.value,
                     tx.args,
                     tx.from_addr,
-                    { 'difficulty': chain.difficulty, 'timestamp': chain[-1].timestamp },
+                    { 'difficulty': blk_chain.difficulty, 'timestamp': blk_chain.chain[-1].timestamp },
                     tx.to_addr,
                     tx.value,
                     not log

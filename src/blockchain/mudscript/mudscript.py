@@ -4,18 +4,18 @@ def mud_script(input:str, storage, balance, user_args, address,
                block_info, contract_address, gas, disable_logging = False):
                
         instructions = input.strip().replace('\t', "").split('\n')
-        instructions = filter(lambda x: x != '', instructions)
+        instructions = list(filter(lambda x: x != '', instructions))
 
         memory = {}
-        user_args = map(lambda x : str(x), user_args)
+        user_args = list(map(lambda x : str(x), user_args))
 
         ins_ptr = 0
 
         while ins_ptr < len(instructions) and gas >= 0:
             line = instructions[ins_ptr].strip()
-            command = filter(lambda x: x != '' , str(line).split(" "))[0]
+            command = list(filter(lambda x: x != '' , str(line).split(" ")))[0]
 
-            args = filter(lambda x: x != '' , line[len(command) + 1:].replace('\s', '').split(','))
+            args = list(filter(lambda x: x != '' , line[len(command) + 1:].replace('\s', '').split(',')))
 
             if command == 'set':
                 memory[args[0]] = get_value(args[1], memory, user_args)
@@ -116,7 +116,7 @@ def get_value(token : str, memory, user_args):
             memory[token] = "0"
         return memory[token]
     
-    elif (token.startswith('%')):
+    elif token.startswith('%'):
         token = token.replace("%", "")
 
         return "0" if type(user_args[int(token)]) == None else user_args[int(token)]
