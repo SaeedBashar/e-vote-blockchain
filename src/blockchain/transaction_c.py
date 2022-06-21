@@ -52,17 +52,18 @@ class Transaction:
             'timestamp': self.timestamp
         }
 
+    @staticmethod
     def is_valid(self, tx, state):
-        if tx['from_addr'] == "" or tx.to_addr == "":
+        if tx['from_addr'] == "" or tx['to_addr'] == "":
             return False
 
-        if tx.value < 0:
+        if tx['value'] < 0:
             return False
 
-        if tx.gas < 1:
+        if tx['gas'] < 0:
             return False
 
-        if (state[tx['from_addr']].balance if state[tx['from_addr']] else 0) < tx.amount + tx.gas:
+        if (state[tx['from_addr']]['balance'] if state[tx['from_addr']] else 0) < tx['amount'] + tx['gas']:
             return False
          
         if tx['from_addr'] != public_key:
