@@ -1,145 +1,237 @@
 
+import binascii
+import hashlib
 import json
-import time as tm
-from pprint import pprint
-from time import time
-from urllib.parse import urlparse
+import math
 import threading
-import requests as rq
+from threading import Thread
 
-from src.blockchain.block import Block
+import Crypto
+import Crypto.Random
+from Crypto.Hash import  SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
+import time as tm
+from time import time
+
+from src.blockchain import keygen
 from src.blockchain.transaction import Transaction
+from src.blockchain.block import Block
+from src.blockchain import miner
 
+keys = keygen.gen_key_pair()
+private_key = keys['private_key']
+public_key = keys['public_key']
+KEY_PAIR = keys['key_pair']
 
-##################################
-### Blockchain Class
+tmp_public_key = '30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001'
 
-class Blockchain():
-    def __init__(self) -> None:
-        self.chain : list(Block) = []
-        self.dif = 4
-        self.pending_tx = []
+class Blockchain:
+    def __init__(self):
+        self.initial_coin_release = Transaction(None, tmp_public_key, 100000000000, 0, [], 0)
+        self.difficulty = 4
+        self.chain = []
+        self.transactions = []
+
+        self.miner_thread = None
+
+        self.block_time = 30000
+        self.reward = 297
+
         self.create_genesis_block()
-      
+
+        self.state = {
+            tmp_public_key : {
+                'balance': 100000000000,
+                'body': "",
+                'timestamps': [],
+                'storage': {}
+            }
+        }
+
     def create_genesis_block(self):
-        block = Block('123456789',[])
+        block = Block(0, '123456789', [self.initial_coin_release], '', self.difficulty)
         block.prev_hash = '0' * 64
-        block.mine_block(self.dif)
-        self.chain.append(block)
-
-    def add_block(self, tx_arr):
-        block: Block = Block(time(), tx_arr)
-        block.prev_hash = self.chain[-1].hash
-        block.mine_block(self.dif)
+        block.mine_block(self.difficulty)
 
         self.chain.append(block)
 
-    def add_transaction(self, t, va, cand):
-        tx = Transaction(t, va, cand)
-        self.pending_tx.append(tx)
+    def start_miner(self):
+
+        self.miner_thread = ThreadWithReturnValue(target=miner.mine, name='MinerThread', args=(self,))
+        self.miner_thread.start()
+
+        mined_block = self.miner_thread.join()
+        # print('from mine ')
+        # print(mined_block.block_item)
+        return mined_block
+
+    def add_block(self, n_block, temp_state):
+
+        is_valid_block = False
+
+        if n_block['prev_hash'] != self.chain[-1].prev_hash:
+            is_valid_block = True
+            if SHA256.new(n_block['index'] + 
+                            n_block['timestamp'] + 
+                            json.dumps(n_block['data']) +
+                            n_block['difficulty'] +
+                            self.chain[-1].hash + 
+                            n_block['nonce'] + 
+                            n_block['merkle_tree']
+                            ) != n_block['hash']:
+                self.log("Failed first test")
+                is_valid_block = False
+
+            # TODO:: temp_state will be checked later
+            if not Block.has_valid_transactions(n_block, temp_state['state']):
+                self.log("Failed second test")
+                is_valid_block = False
+
+            if int(n_block['timestamp']) > time() or int(n_block['timetamp']) < int(self.chain[-1].timestamp):
+                self.log("Failed third test")
+                is_valid_block = False
+
+            if n_block['prev_hash'] != self.chain[-1].prev_hash:
+                self.log("Failed forth test")
+                is_valid_block = False
+
+            if int(n_block['index']) - 1 != int(self.chain[-1].index):
+                self.log("Failed fifth test")
+                is_valid_block = False
+
+            if int(n_block['difficulty']) != int(self.difficulty):
+                self.log("Failed sixth test")
+                is_valid_block = False
+                        
+        if is_valid_block:
+            if int(n_block['index']) % 100 == 0:
+                self.difficulty = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
+            
+            tmp_txs = []
+            for t_item in n_block['data']:
+                tmp_txs.append(Transaction(
+                                            t_item['from_addr'],
+                                            t_item['to_addr'],
+                                            t_item['value'],
+                                            t_item['gas'],
+                                            t_item['args'],
+                                            t_item['timestamp']
+                                        )
+                            )
+
+            tmp_block = Block(
+                                n_block['index'],
+                                n_block['timestamp'],
+                                tmp_txs,
+                                n_block['prev_hash'],
+                                n_block['difficulty']
+                        )
+
+            tmp_block.hash = n_block['hash']
+            tmp_block.nonce = n_block['nonce']
+            tmp_block.merkle_tree = n_block['merkle_tree']
+
+            self.chain.append(tmp_block)
+            self.miner_thread.stop()
+            self.transactions = list(filter(lambda tx: Transaction.is_valid(tmp_txs, temp_state['state'])))
+
+            return {
+                'success': True,
+                'new_block': tmp_block
+            }
+        
+        return {
+            'success': False,
+            'new_block': None
+        }
+
+    def add_transaction(self, trans, send_nodes, state, node_conn_exempt = None):
+        balance = int(self.get_balance(trans['from_addr'])) - int(trans['value']) - int(trans['gas'])
+
+        for tx in self.transactions:
+            if tx.from_addr == trans['from_addr']:
+                balance -= tx.value + tx.gas
+
+        if Transaction.is_valid(trans, state) and balance >= 0:
+            print("is_valid")
+            is_valid_tx = True
+            tmp_txs = filter(lambda x: x.from_addr == trans['from_addr'], self.transactions)
+            
+            for tx in tmp_txs:
+                if str(tx.timestamp) == trans['timestamp']:
+                    is_valid_tx = False
+
+            if is_valid_tx:
+                print("is_valid_tx")
+                tmp_tx = Transaction(
+                                trans['from_addr'],
+                                trans['to_addr'],
+                                trans['value'],
+                                trans['gas'],
+                                trans['args'],
+                                trans['timestamp']
+                            )
+
+                self.transactions.append(tmp_tx)
+                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": tmp_tx.tx_item}
+                
+                exclude_list = [trans['from_addr']]
+
+                if node_conn_exempt != None:
+                    exclude_list.append(node_conn_exempt.pk)
+
+                send_nodes(data, exclude_list)
+                return True
+            return False
+        return False
+
 
     def tx_to_add_block(self):
         tmp_tx = []
-        max_limit = 2
+        max_limit = 5
         counter = 0
 
-        # while counter < len(tmp_tx) < max_limit or len(self.pending_tx) == 0 : 
-        while counter < max_limit and len(self.pending_tx) != 0 : 
-            tmp = self.pending_tx[0]
+        while counter < max_limit and len(self.transactions) != 0 : 
+            tmp = self.transactions[0]
             tmp_i = 0
-            for i, t in enumerate(self.pending_tx):
-                if t.timestamp < int(tmp.timestamp):
+
+            for i, t in enumerate(self.transactions):
+                if t.gas > tmp.gas:
                     tmp_i = i
-            tmp_tx.append(self.pending_tx[tmp_i])
-            self.pending_tx.pop(tmp_i)
+                elif t.gas == tmp.gas:
+                    if t.timestamp < int(tmp.timestamp):
+                        tmp_i = i
+
+            tmp_tx.append(self.transactions[tmp_i])
+            self.transactions.pop(tmp_i)
             counter += 1
         return tmp_tx
 
-    def replace_chain(self, node, node_conn_list):
-        network = node_conn_list
-       
-        responded_nodes = []
-
-        for conn in network:
-            request_data = {'type':'chain_length_request'}
-            node.send_to_node(conn, request_data)
-            tm.sleep(0.5)
-
-            if conn.response_data is None:
-                continue
-            else:
-                print("%s responded with a length of %s" % (conn.addr, conn.response_data['length']))
-                responded_nodes.append(conn)
-
+    def get_balance(self, address):
         
-        if len(responded_nodes) != 0:
-            node_with_longest_chain = max(responded_nodes, key=lambda x: x.response_data['length'])
-        else:
-            print("None of the nodes responded")
-            return False
+        return self.state[address]['balance'] if self.state[address] != None else 0
 
-        conn = node_with_longest_chain
-        
-        #TODO:: replace the get request with a post request
-        payload = {'hash': node.blockchain.chain[-1].hash}
-        response = rq.get(f'http://{conn.addr}:{str(int(conn.port) - 1000)}/get_chain', params=payload)
 
-        if response.status_code == 200:
-                
-                chain = response.json()['chain']
-                tmp_chain = []
-                try:
-                    for b_item in chain:
-                        tmp_txs = []
-                        for t_item in b_item['transactions']:
-                            tmp_txs.append(Transaction(
-                                                        t_item['timestamp'],
-                                                        t_item['voter_addr'],
-                                                        t_item['voted_candidates']
-                                                    )
-                                        )
+class ThreadWithReturnValue(Thread):
+            def __init__(self, group=None, target=None, name=None,
+                        args=(), kwargs={}, Verbose=None):
+                Thread.__init__(self, group, target, name, args, kwargs)
+                self._return = None
 
-                        tmp_block = Block(
-                                            b_item['timestamp'],
-                                            tmp_txs,
-                                            b_item['prev_hash']
-                                    )
-                
-                        tmp_block.nonce = b_item['nonce']
-                        tmp_block.hash = b_item['hash']
-                        tmp_block.set_block()
+            def stop(self):
+                if not self._stop.isSet():
+                    self._stop.set()
 
-                        tmp_chain.append(tmp_block)
-                        
-                    else:
-                        if self.is_chain_valid(tmp_chain):
-                            node.blockchain.chain.extend(tmp_chain)
-                            print("Chain is Updated Successfully")
-                            return True
-                        else:
-                            print("Chain is not valid")
-                            return False
+            def stopped(self):
+                return self._stop.isSet()
 
-                    
-                except Exception as e:
-                    print("An error occured while updating chain")
-                    raise e
-
-        return False
-                   
-
-    def is_chain_valid(self, chain: list[Block]):
-        prev_block = chain[0]
-        cur_block_i = 1
-
-        while cur_block_i < len(chain):
-            block = chain[cur_block_i]
-            if block.prev_hash != prev_block.hash:
-                return False
-            if block.hash != block.get_hash():
-                return False
-            
-            cur_block_i += 1
-            prev_block = block
-
-        return True
+            def run(self):
+                print(type(self._target))
+                if self._target is not None:
+                    self._return = self._target(*self._args,
+                                                        **self._kwargs)
+            def join(self, *args):
+                Thread.join(self, *args)
+                return self._return

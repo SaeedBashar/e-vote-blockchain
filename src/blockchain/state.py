@@ -2,7 +2,7 @@ from src.blockchain.mudscript.mudscript import mud_script
 
 def change_state(new_block, state):
     for tx in new_block.data:
-        if (state[tx.to_addr] == None):
+        if (not tx.to_addr in state):
             state[tx.to_addr] = {
                 'balance': 0,
                 'body': "",
@@ -10,7 +10,7 @@ def change_state(new_block, state):
                 'storage': {}
             }
         
-        if (state[tx.from_addr] == None):
+        if (not tx.from_addr in state):
             state[tx.from_addr] = {
                 'balance': 0,
                 'body': "",
@@ -26,9 +26,10 @@ def change_state(new_block, state):
         
 
         state[tx.to_addr]['balance'] += tx.value
-        state[tx.from_addr]['balance'] -= (tx.amount + tx.gas)
+        state[tx.from_addr]['balance'] -= (int(tx.value) + int(tx.gas))
 
         state[tx.from_addr]['timestamps'].append(tx.timestamp)
+    return state
 
 def trigger_contract(new_block, state, blk_chain, log):
     for tx in new_block.data:

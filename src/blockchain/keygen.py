@@ -25,9 +25,9 @@ def gen_key_pair():
     result1 = result.copy()
     result1['key_pair'] = key
 
-    path.write_text(json.dumps(result))
-    print(hex_key(private_key))
-    print(hex_key(public_key))
+    # path.write_text(json.dumps(result))
+    # print(hex_key(private_key))
+    # print(hex_key(public_key))
     return result1
 
 def hex_key(key):

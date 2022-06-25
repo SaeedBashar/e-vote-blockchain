@@ -1,6 +1,7 @@
 # coding:utf-8
 import hashlib
 from collections import OrderedDict
+import json
 
 from src.blockchain.transaction import Transaction
 
@@ -52,7 +53,7 @@ class Merkle_tree(object):
                 else:
                     root_leaf = root_leaf
 
-                root_leaf_hash = hashlib.sha256(root_leaf.encode()).hexdigest()
+                root_leaf_hash = hashlib.sha256(json.dumps(root_leaf).encode()).hexdigest()
                 transaction_tree[root_leaf] = root_leaf_hash
                 self.transaction_tree = transaction_tree
 
