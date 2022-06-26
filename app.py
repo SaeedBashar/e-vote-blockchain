@@ -7,6 +7,7 @@ import socket
 from time import time
 
 from src.blockchain_node.node import Node
+from src.blockchain import keygen
 from database.database import Database as db
 
 from argparse import ArgumentParser
@@ -31,9 +32,9 @@ socketio = SocketIO(app)
 @app.route('/', methods=['GET'])
 def index():
     if 'u_name' in session:
-        redirect('/home')
+        return redirect('/home')
     else:
-        redirect('/login')
+        return redirect('/login')
 
 @app.route('/home', methods=['GET'])
 def home():
@@ -60,7 +61,7 @@ def signin():
         uname = request.form.get('username')
         pword = request.form.get('password')
     
-        return_data = db.auth_user((uname, pword))
+        return_data = db.get_user((uname, pword))
 
         if len(return_data) != 0:
             return_data = return_data[0]
@@ -69,8 +70,12 @@ def signin():
             session['name'] = return_data[0]
             session['email'] = return_data[1]
             session['u_name'] = return_data[2]
-            session['public_key'] = return_data[3]
-            return redirect('/home')
+            session['public_key'] = return_data[5]
+
+            if session['public_key'] != None:
+                return redirect('/home')
+            else:
+                return redirect('/key-generate')
         else:
             return redirect('/login')
 
@@ -89,9 +94,56 @@ def register():
         return render_template('home/page-register.html')
     else:
         data = request.form['username']
-        # db.auth_user(tup)
+        # db.get_user(tup)
         print(data)
         return "done"
+
+@app.route('/key-generate')
+def key_generate():
+    if 'u_name' in session:
+        return render_template('home/page-generate-key.html')
+    else:
+        redirect('/login')
+
+@app.route('/generate')
+def generate():
+    if 'u_name' in session:
+        uname = request.form.get('username')
+        pword = request.form.get('password')
+    
+        return_data = db.get_user((uname, pword))
+        if len(return_data) != 0:
+            return_data = return_data[0]
+
+            if return_data[4] == None and return_data[5] == None:
+                keys = keygen.gen_key_pair()
+                cipher = keygen.get_sym_key()
+
+                enc_priv_key = cipher.encrypt(keys['private_key'].encode())
+                data = {
+                    'private_key': enc_priv_key,
+                    'public_key': keys['public_key'],
+                    'user' : {
+                                'name' : session['name'],
+                                'email' : session['email']
+                            }
+                }
+                status = db.insert_keys(data)
+
+                if status:
+                    return jsonify({
+                        'private_key': keys['private_key'],
+                        'public_key': keys['public_key']
+                    })
+                else:
+                    return jsonify({'message': 'Error generating keys!!'})
+            else:
+                return jsonify({
+                        'private_key': return_data[4],
+                        'public_key': return_data[5]
+                    })
+    else:
+        return redirect('/login')
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -109,14 +161,59 @@ def profile():
 @app.route('/send', methods=['GET'])
 def send():
     if 'u_name' in session:
-        redirect('/home')
+        return render_template('home/page-send.html')
     else:
         redirect('/login')
 
 @app.route('/receive', methods=['GET'])
 def receive():
     if 'u_name' in session:
-        redirect('/home')
+        return render_template('home/page-receive.html')
+    else:
+        redirect('/login')
+
+@app.route('/blocks', methods=['GET'])
+def blocks():
+    if 'u_name' in session:
+        return render_template('home/page-blocks.html')
+    else:
+        redirect('/login')
+
+@app.route('/transactions', methods=['GET'])
+def transactions():
+    if 'u_name' in session:
+        return render_template('home/page-transactions.html')
+    else:
+        redirect('/login')
+
+@app.route('/contracts', methods=['GET'])
+def contracts():
+    if 'u_name' in session:
+        return render_template('home/page-contracts.html')
+    else:
+        redirect('/login')
+
+@app.route('/connected-nodes', methods=['GET'])
+def connected_nodes():
+    if 'u_name' in session:
+        return render_template('home/page-connected_nodes.html')
+    else:
+        redirect('/login')
+
+@app.route('/connect-node', methods=['GET', 'POST'])
+def connect_node():
+    if 'u_name' in session:
+        data = request.get_json()
+        return_data = host_node.connect_with_node(data['host'], data['port'])
+
+        # if return_data['status']:
+        #     return jsonify({
+        #         'message': return_data['msg']
+        #     })
+        # return jsonify({
+        #     'message': return_data['msg']
+        # })
+        return render_template('home/page-connect-node.html')
     else:
         redirect('/login')
 
@@ -134,19 +231,6 @@ def get_nodes():
 @app.route('/get_pk', methods=['GET'])
 def get_id():
     return jsonify({'public_key': host_node.public_key})
-
-@app.route('/connect_node', methods=['POST'])
-def connect_node():
-    data = request.get_json()
-    return_data = host_node.connect_with_node(data['host'], data['port'])
-
-    if return_data['status']:
-        return jsonify({
-            'message': return_data['msg']
-        })
-    return jsonify({
-        'message': return_data['msg']
-    })
 
 
 # Blockchain routes

@@ -1,5 +1,6 @@
 
 import binascii
+from cryptography.fernet import Fernet
 
 import Crypto
 import Crypto.Random
@@ -24,10 +25,6 @@ def gen_key_pair():
 
     result1 = result.copy()
     result1['key_pair'] = key
-
-    # path.write_text(json.dumps(result))
-    # print(hex_key(private_key))
-    # print(hex_key(public_key))
     return result1
 
 def hex_key(key):
@@ -35,3 +32,17 @@ def hex_key(key):
 
 def unhex_key(key):
     return binascii.unhexlify(key)
+
+# use for and encrypting and decrypting text
+def get_sym_key():
+    p = Path('sym_key.txt')
+
+    if not p.exists():
+        key = Fernet.generate_key()
+        p.write_bytes(key)
+
+    cipher = Fernet(p.read_bytes())
+
+    return cipher
+
+

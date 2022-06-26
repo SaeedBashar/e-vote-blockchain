@@ -13,12 +13,30 @@ class Database:
         pass
 
     @classmethod
-    def auth_user(self, data):
-        query = "Select * from Profile where u_name = ? and password = ?"
+    def get_user(self, data):
+        query = "SELECT * FROM Profile WHERE u_name = ? AND password = ?"
 
         with sqlite3.connect(db_path) as conn:
             cursor = conn.execute(query, data)
             return cursor.fetchall()
+
+    @classmethod
+    def insert_keys(self, data):
+        query = "UPDATE Profile SET private_key = ?, public_key = ? WHERE name=? and email=?"
+        try:
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(query, (
+                                        data['private_key'], 
+                                        data['public_key'], 
+                                        data['user']['name'],
+                                        data['user']['email']
+                                    )
+                            )
+                conn.commit()
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def calli(self):
         with sqlite3.connect(db_path) as conn:
