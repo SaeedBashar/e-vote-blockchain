@@ -79,7 +79,7 @@ class Blockchain:
                             n_block['difficulty'] +
                             self.chain[-1].hash + 
                             n_block['nonce'] + 
-                            n_block['merkle_tree']
+                            n_block['merkle_root']
                             ) != n_block['hash']:
                 self.log("Failed first test")
                 is_valid_block = False
@@ -131,7 +131,7 @@ class Blockchain:
 
             tmp_block.hash = n_block['hash']
             tmp_block.nonce = n_block['nonce']
-            tmp_block.merkle_tree = n_block['merkle_tree']
+            tmp_block.merkle_root = n_block['merkle_root']
 
             self.chain.append(tmp_block)
             self.miner_thread.stop()

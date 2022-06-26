@@ -22,7 +22,7 @@ class Block:
         self.data = data
         self.difficulty = difficulty
         
-        self.merkle_tree = Merkle_tree(data).get_root_leaf()
+        self.merkle_root = Merkle_tree(data).get_root_leaf()
 
         self.prev_hash = prev_hash
         self.nonce = 0
@@ -40,14 +40,14 @@ class Block:
             "difficulty": self.difficulty,
             "timestamp": str(self.timestamp),
             "nonce": self.nonce,
-            "merkle_tree": self.merkle_tree,
+            "merkle_root": self.merkle_root,
             "prev_hash": self.prev_hash,
             "hash": self.hash,
             "data": tmp_tx
         }
 
     def get_hash(self):
-        str_val = str(self.index) + str(self.timestamp) + json.dumps(self.block_item['data']) + str(self.difficulty) + self.prev_hash + str(self.nonce) + self.merkle_tree
+        str_val = str(self.index) + str(self.timestamp) + json.dumps(self.block_item['data']) + str(self.difficulty) + self.prev_hash + str(self.nonce) + self.merkle_root
         # str_val = str(self.timestamp) + str(self.transactions) + str(self.prev_hash) + str(self.nonce)
         return hashlib.sha256(str_val.encode()).hexdigest()
 

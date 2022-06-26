@@ -28,7 +28,7 @@ from src.blockchain import miner
 temp_state = {
     "state": {"30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001":
                    {
-                    "balance":100000000000000,
+                    "balance":100000000000,
                     "body":"",
                     "timestamps":[],
                     "storage":{}
@@ -240,8 +240,8 @@ class Node(threading.Thread):
                         n_block['difficulty']
                     )
                     tmp_block.hash = n_block['hash']
-                    tmp_block.merkle_tree = n_block['merkle_tree']
-                    tmp_block.nonce = n_block['merkle_tree']
+                    tmp_block.merkle_root = n_block['merkle_root']
+                    tmp_block.nonce = n_block['nonce']
                     tmp_block.prev_hash = n_block['prev_hash']
 
                     if not data['finished']:
@@ -270,7 +270,7 @@ class Node(threading.Thread):
                             cur_block.difficulty+
                             pre_block.hash + 
                             cur_block.nonce + 
-                            cur_block.merkle_tree
+                            cur_block.merkle_root
                             ) != cur_block.hash:
                                 self.log("Failed first test")
                                 is_chain_valid = False

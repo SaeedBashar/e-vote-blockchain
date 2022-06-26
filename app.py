@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, redirect, session, escape
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
@@ -7,6 +7,7 @@ import socket
 from time import time
 
 from src.blockchain_node.node import Node
+from database.database import Database as db
 
 from argparse import ArgumentParser
 
@@ -29,7 +30,102 @@ socketio = SocketIO(app)
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html', chain=host_node.blockchain.chain)
+    if 'u_name' in session:
+        redirect('/home')
+    else:
+        redirect('/login')
+
+@app.route('/home', methods=['GET'])
+def home():
+    if 'u_name' in session:
+        user = {
+            'name': session['name'],
+            'email': session['email'],
+            'u_name': session['u_name'],
+            'public_key': session['public_key']
+        }
+        data = {
+            "user" : user,
+            'blockchain': host_node.blockchain
+        }
+        return render_template('home/index.html', data=data)
+    else:
+        return redirect('/login')
+
+@app.route('/login', methods=['GET', 'POST'])
+def signin():
+    if request.method == 'GET':
+        return render_template('home/page-login.html')
+    else:
+        uname = request.form.get('username')
+        pword = request.form.get('password')
+    
+        return_data = db.auth_user((uname, pword))
+
+        if len(return_data) != 0:
+            return_data = return_data[0]
+
+        if len(return_data) != 0:
+            session['name'] = return_data[0]
+            session['email'] = return_data[1]
+            session['u_name'] = return_data[2]
+            session['public_key'] = return_data[3]
+            return redirect('/home')
+        else:
+            return redirect('/login')
+
+@app.route('/logout')
+def signout():
+    session.pop('u_name', None)
+    session.pop('name', None)
+    session.pop('email', None)
+    session.pop('public_key', None)
+
+    return redirect('/')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('home/page-register.html')
+    else:
+        data = request.form['username']
+        # db.auth_user(tup)
+        print(data)
+        return "done"
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'u_name' in session:
+        user = {
+            'name': session['name'],
+            'email': session['email'],
+            'u_name': session['u_name'],
+            'public_key': session['public_key']
+        }
+        return render_template('home/users-profile.html', user = user)
+    else:
+        return redirect('/login')
+
+@app.route('/send', methods=['GET'])
+def send():
+    if 'u_name' in session:
+        redirect('/home')
+    else:
+        redirect('/login')
+
+@app.route('/receive', methods=['GET'])
+def receive():
+    if 'u_name' in session:
+        redirect('/home')
+    else:
+        redirect('/login')
+
+@app.route('/configure')
+def configure():
+    if 'u_name' in session:
+        return render_template('home/page_configure.html')
+    else:
+        return redirect('/login')
 
 @app.route('/all_nodes', methods=['GET'])
 def get_nodes():
@@ -120,16 +216,6 @@ def replace_chain():
             'message': 'All good, the chain is the longest one',
             'chain': tmp}
     return jsonify(response)
-    
-# @app.route('/is_chain_valid', methods=['GET'])
-# def is_valid():
-#     isValid = host_node.blockchain.is_chain_valid(host_node.blockchain.chain)
-#     if isValid:
-#         response = {'message': 'All good. The blockchain is valid'}
-#     else:
-#         response = {'message': 'We have a problem, the chain is invalid!!'}
-#     return jsonify(response)
-
 
 
 # @socketio.on('connect')
@@ -140,6 +226,7 @@ def replace_chain():
 # def value_changed(message):
 #     emit('update value', message, broadcast=True)
 
+app.secret_key = 'mysecret'
 
 if __name__ == '__main__':
     socketio.run(app, host=addr, port=(int(port) - 1000), debug = True)
