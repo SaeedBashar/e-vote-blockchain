@@ -12,7 +12,7 @@ from database.database import Database as db
 
 from argparse import ArgumentParser
 
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+# __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 
 parser = ArgumentParser()
@@ -60,22 +60,27 @@ def signin():
     else:
         uname = request.form.get('username')
         pword = request.form.get('password')
-    
-        return_data = db.get_user((uname, pword))
+
+        c = keygen.get_sym_key()
+        enc_pword = c.encrypt(pword.encode())
+        return_data = db.get_user((uname, enc_pword.decode()))
 
         if len(return_data) != 0:
             return_data = return_data[0]
+
+        c = keygen.get_sym_key()
 
         if len(return_data) != 0:
             session['name'] = return_data[0]
             session['email'] = return_data[1]
             session['u_name'] = return_data[2]
+            session['password'] = c.decrypt(return_data[3])
             session['public_key'] = return_data[5]
 
-            if session['public_key'] != None:
-                return redirect('/home')
-            else:
+            if session['public_key'] == None or session['public_key'] == "":
                 return redirect('/key-generate')
+            else:
+                return redirect('/home')
         else:
             return redirect('/login')
 
@@ -85,6 +90,7 @@ def signout():
     session.pop('name', None)
     session.pop('email', None)
     session.pop('public_key', None)
+    session.pop('password', None)
 
     return redirect('/')
 
@@ -93,35 +99,51 @@ def register():
     if request.method == 'GET':
         return render_template('home/page-register.html')
     else:
-        data = request.form['username']
-        # db.get_user(tup)
-        print(data)
-        return "done"
+        try:
+            name = request.form.get('name')
+            email = request.form.get('email')
+            uname = request.form.get('username')
+            pword = request.form.get('password')
+
+            c = keygen.get_sym_key()
+            enc_pword = c.encrypt(pword.encode())
+
+            status = db.add_user((name, email, uname, enc_pword.decode()))
+            if status:
+                return redirect('/key-generate')
+            else:
+                return jsonify({'message': 'An Error Occured while creating record!!'})
+        except Exception as e:
+            print(e)
+            return jsonify({'message': 'An Unexpected Error Occured!!, could not create record'})
+        
 
 @app.route('/key-generate')
 def key_generate():
     if 'u_name' in session:
         return render_template('home/page-generate-key.html')
     else:
-        redirect('/login')
+        return redirect('/login')
 
 @app.route('/generate')
 def generate():
     if 'u_name' in session:
-        uname = request.form.get('username')
-        pword = request.form.get('password')
-    
-        return_data = db.get_user((uname, pword))
+        uname = session['u_name']
+        pword = session['password']
+       
+        c = keygen.get_sym_key()
+        return_data = db.get_user((uname, c.encrypt(pword).decode()))
+        
         if len(return_data) != 0:
             return_data = return_data[0]
-
-            if return_data[4] == None and return_data[5] == None:
+            
+            if (return_data[4] == None or return_data[4] == "") or (return_data[5] == None and return_data[5] == ""):
                 keys = keygen.gen_key_pair()
-                cipher = keygen.get_sym_key()
+                # cipher = keygen.get_sym_key()
 
-                enc_priv_key = cipher.encrypt(keys['private_key'].encode())
+                enc_priv_key = c.encrypt(keys['private_key'].encode())
                 data = {
-                    'private_key': enc_priv_key,
+                    'private_key': enc_priv_key.decode(),
                     'public_key': keys['public_key'],
                     'user' : {
                                 'name' : session['name'],
@@ -129,7 +151,7 @@ def generate():
                             }
                 }
                 status = db.insert_keys(data)
-
+                
                 if status:
                     return jsonify({
                         'private_key': keys['private_key'],
@@ -138,10 +160,13 @@ def generate():
                 else:
                     return jsonify({'message': 'Error generating keys!!'})
             else:
+                c = keygen.get_sym_key()
                 return jsonify({
-                        'private_key': return_data[4],
+                        'private_key': c.decrypt(return_data[4]),
                         'public_key': return_data[5]
                     })
+        else:
+            return redirect('/register')
     else:
         return redirect('/login')
 

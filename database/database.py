@@ -21,6 +21,19 @@ class Database:
             return cursor.fetchall()
 
     @classmethod
+    def add_user(self, data):
+        query = "INSERT INTO Profile VALUES(?, ?, ?, ?, '', '')"
+        try:
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(query, data)
+                conn.commit()
+
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
     def insert_keys(self, data):
         query = "UPDATE Profile SET private_key = ?, public_key = ? WHERE name=? and email=?"
         try:
