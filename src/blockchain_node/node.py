@@ -24,6 +24,8 @@ from src.blockchain.block import Block
 from src.blockchain.transaction import Transaction
 from src.blockchain import miner
 
+from database.database import Database as db
+
 # Variables for testing purposes
 temp_state = {
     "state": {"30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001":
@@ -44,12 +46,13 @@ class Node(threading.Thread):
         self.port = port
         self.max_connections = max_connections
 
-        self.private_key = ""
-        self.public_key = ""
-        self.key_pair = None
+        self.public_key = None 
 
         self.opened_connection = []
         self.connected_nodes = []
+
+        self.nodes_inbound: list[Node_connection] = []  
+        self.nodes_outbound: list[Node_connection] = []
 
 
         self.terminate_flag = threading.Event()
@@ -66,9 +69,23 @@ class Node(threading.Thread):
 
     @property
     def all_nodes(self):
+
+        # get and initiliaze connected_nodes if it's empty
+        # r_data = tuple(db.get_data())
+        # thread_list = []
+        # for n in r_data:
+        #     t = threading.Thread(target=self.connect_with_node, args=(n[0], n[1]))
+        #     t.start()
+        #     thread_list.append(t)
+
+        # for t in thread_list:
+        #     if t.is_alive():
+        #         t.join(0.2)
+
         tmp_nodes = []
         tmp = {}
-        all_nodes = self.connected_nodes
+        # all_nodes = self.connected_nodes
+        all_nodes = set(self.nodes_inbound + self.nodes_outbound)
         if all_nodes != []:
             for n in all_nodes:
                 tmp['address'] = n.address
@@ -102,7 +119,7 @@ class Node(threading.Thread):
         return Node_connection(self, connection, id, address, port)
 
     def make_transaction(self, trans):
-        status = self.blockchain.add_transaction(trans, self.send_to_nodes, temp_state['state'])
+        status = self.blockchain.add_transaction(trans, self.send_to_nodes)
         
         return status
 
@@ -119,14 +136,13 @@ class Node(threading.Thread):
                 mined_block = self.blockchain.start_miner()
 
                 self.blockchain.chain.append(mined_block)
+                db.add_block(mined_block)
 
-                temp_state['state'] = change_state(mined_block, temp_state['state'])
+                # state = db.get_state()
 
-                print("We got here")
+                # temp_state['state'] = change_state(mined_block, state)
 
-                trigger_contract(self.blockchain.chain[-1], temp_state['state'], self.blockchain, self.enable_logging)
-                
-                print("here too")
+                # trigger_contract(self.blockchain.chain[-1], temp_state['state'], self.blockchain, self.enable_logging)
 
                 data = {'type': 'NEW_BLOCK_REQUEST', 'block': mined_block.block_item}
                 self.send_to_nodes(data, [])
@@ -136,42 +152,59 @@ class Node(threading.Thread):
             print(e)
             return {"status": False, "msg": "Could not start miner..."}
 
-    def connect_with_node(self, address, port, reconnect=False):
+    def connect_with_node(self, address, port):
         if address == self.address and port == self.port:
             self.log("[SELF CONNECTION]: Can not connect to yourself!!")
-            return False
-
-        for node in self.connected_nodes:
+            return {
+                "status": False,
+                'msg': '[SELF CONNECTION]: Can not connect to yourself!!'
+            }
+        for node in self.nodes_outbound:
+            # for node in self.connected_nodes:
             if node.address == address and node.port == port:
                 self.log(f"[EXISTING CONNECTION]: Already connected to node {address}:{port}")
-                return True
+                return {
+                    "status": False,
+                    "msg": f"[EXISTING CONNECTION]: Already connected to node {address}:{port}"
+                }
 
         try:
+            self.public_key = db.get_pk()[0][0]
             if self.public_key != "":
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.log("[CONNECTING]: Connecting to node %s:%s..." % (address, port))
-                sock.connect((address, port))
+                sock.connect((address, int(port)))
 
                 sock.send((self.public_key + ":" + str(self.port)).encode('utf-8')) 
                 connected_node_pk = sock.recv(4096).decode('utf-8')
-
-                for node in self.connected_nodes:
+                for node in self.nodes_inbound:
+                    # for node in self.connected_nodes:
                     if node.address == address and node.pk == connected_node_pk:
                         self.log(f"[EXISTING CONNECTION]: Already connected to node {address}:{port}")
                         sock.send("[CLOSING]: Closing, connection exist already".encode('utf-8'))
                         sock.close()
-                        return True
-
+                        return {
+                                "status": False,
+                                "msg": f"[EXISTING CONNECTION]: Already connected to node {address}:{port}"
+                            }
                 thread_client = self.create_new_connection(sock, connected_node_pk, address, port)
                 thread_client.start()
-
+                self.nodes_outbound.append(thread_client)
+                # self.connected_nodes.append(thread_client)
+                status = db.add_connection(thread_client)
+                
+                if status:
+                    self.log("[CONNECTED]: Connected to node %s:%s..." % (address, port))
                 return {"status": True, "msg": "Connected Successfully"}
             else:
                 return {"status": False, "msg": "Failed to Connect. Please make sure you have a public key"}
 
         except Exception as e:
             self.log("[CONNECTION ERROR]: Could not connect with node. (" + str(e) + ")")
-            return False
+            return {
+                'status': False,
+                'msg': '[CONNECTION ERROR]: Could not connect with node'
+            }
 
              
     def node_message(self, node_conn, data):
@@ -184,7 +217,7 @@ class Node(threading.Thread):
             if data['type'] == 'NEW_TRANSACTION_REQUEST':
                 transaction = data['transaction']
 
-                self.blockchain.add_transaction(transaction, temp_state['state'], self.send_to_nodes, node_conn)
+                self.blockchain.add_transaction(transaction, self.send_to_nodes, node_conn)
                     
             elif data['type'] == 'LATEST_BLOCK_REQUEST':
                 node_conn.send({'msg': 'success'})
@@ -196,7 +229,7 @@ class Node(threading.Thread):
 
                 return_data = self.blockchain.add_block(n_block, temp_state['state'])
 
-                if return_data['success']:
+                if return_data['status']:
                     temp_state['state'] = change_state(return_data['new_block'], temp_state['state'])
 
                     trigger_contract(self.blockchain.chain[-1], temp_state['state'], self.blockchain, self.enable_logging)
@@ -220,7 +253,7 @@ class Node(threading.Thread):
                     n_block = data['block']
                     tmp_txs = []
                     for tx in n_block['data']:
-                        if Transaction.is_valid(tx, temp_state['state']):
+                        if Transaction.is_valid(tx):
                             tmp_txs.append(
                                 Transaction(
                                     tx['from_addr'],
@@ -322,17 +355,37 @@ class Node(threading.Thread):
 
     def send_to_nodes(self, data, exclude=[], compression='none'):
         
-        for n in self.connected_nodes:
+        for n in self.nodes_inbound:
             if n.pk in exclude:
                 self.log(f"[EXCLUSION] Node {n.address}:{n.port} is excluded")
             else:
                 self.send_to_node(n, data, compression)
 
+        for n in self.nodes_outbound:
+            if n.pk in exclude:
+                self.log(f"[EXCLUSION] Node {n.address}:{n.port} is excluded")
+            else:
+                self.send_to_node(n, data, compression)
+
+        #mod for n in self.nodes_inbound:
+        #mod     if n in exclude:
+        #mod         self.debug_print(f"[EXCLUSION - inbound] Node {n.addr}:{n.port} is excluded")
+        #mod     else:
+        #mod         self.send_to_node(n, data, compression)
+
+        #mod for n in self.nodes_outbound:
+        #mod     if n in exclude:
+        #mod         self.debug_print(f"[EXCLUSION - outbound] Node {n.addr}:{n.port} is excluded")
+        #mod     else:
+        #mod         self.send_to_node(n, data, compression)
+
 
     def send_to_node(self, n, data, compression='none'):
 
-        if n in self.connected_nodes:
-            n.send(data, compression=compression)
+        if n in self.nodes_inbound or n in self.nodes_outbound:
+             n.send(data, compression=compression)
+            # if n in self.connected_nodes:
+            #     n.send(data, compression=compression)
         else:
             self.log(f"[UNKNOWN NODE]: Do not have connection with node {n.address}:{n.port}!!")
     
@@ -359,8 +412,8 @@ class Node(threading.Thread):
                 connection, client_address = self.sock.accept()
                 self.log("[RECEIVED]: New connection received.")
 
-
-                if len(self.connected_nodes) > self.max_connections:
+                if len(self.nodes_inbound) > self.max_connections:
+                # if len(self.connected_nodes) > self.max_connections:
                     self.log("[LIMIT]. You have reached the maximum connection limit!")
                     connection.close()
                 else:
@@ -373,13 +426,20 @@ class Node(threading.Thread):
                         else:
                             print(connected_node_pk + "No pk here")
                     
+                    if self.public_key == None:
+                        # Get and instantiate public key of the node
+                        r_data = db.get_pk()
+                        self.public_key = r_data[0][0]
+
                     connection.send(self.public_key.encode('utf-8')) 
                     # connection.send(self.id.encode('utf-8')) 
 
                     thread_client = self.create_new_connection(connection, connected_node_pk, client_address[0], connected_node_port)
                     thread_client.start()
 
-                    self.connected_nodes.append(thread_client)
+                    self.nodes_inbound.append(thread_client)
+                    # self.connected_nodes.append(thread_client)
+                    # db.add_connection(thread_client)
 
 
             except socket.timeout:
@@ -389,11 +449,22 @@ class Node(threading.Thread):
                     raise e
         
         self.log("[STOPPING] Node stopping....")
-        for n in self.connected_nodes:
-            n.stop()
+        for t in self.nodes_inbound:
+            t.stop()
 
-        for n in self.connected_nodes:
-            n.join()
+        for t in self.nodes_outbound:
+            t.stop()
+        # for n in self.connected_nodes:
+        #     n.stop()
+
+        for t in self.nodes_inbound:
+            t.join()
+
+        for t in self.nodes_outbound:
+            t.join()
+
+        # for n in self.connected_nodes:
+        #     n.join()
 
         time.sleep(3)
         self.sock.close()

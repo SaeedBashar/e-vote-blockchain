@@ -13,6 +13,29 @@ class Database:
         pass
 
     @classmethod
+    def get_data(self, arg):
+        if arg == 'transactions':
+            query = "SELECT * FROM non_mined_transactions"
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                return cursor.fetchall()
+
+        elif arg == 'blocks':
+            query = "SELECT * FROM Chain"
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                return cursor.fetchall()
+
+        elif arg == 'nodes':
+            query = "SELECT * FROM connected_nodes"
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                return cursor.fetchall()
+
+    @classmethod
     def get_user(self, data):
         query = "SELECT * FROM Profile WHERE u_name = ? AND password = ?"
 
@@ -50,6 +73,140 @@ class Database:
         except Exception as e:
             print(e)
             return False
+
+    @classmethod
+    def add_block(self, data):
+        blk_dict = data.block_item
+        blk_dict['data'] = json.dumps(blk_dict['data'])
+        try:
+            with sqlite3.connect(db_path) as conn:
+                query = "INSERT INTO Chain VALUES(?, ?, ?, ?, ?, ?, ?, ?)"
+                conn.execute(query, tuple(blk_dict.values()))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
+    def get_block(self, ind):
+        with sqlite3.connect(db_path) as conn:
+            query = "SELECT * FROM Chain WHERE ind = ?"
+            cursor = conn.execute(query, (ind,))
+            return cursor.fetchall()
+
+    @classmethod
+    def add_transaction(self, data):
+        tx_dict = data.tx_item
+        # tx_dict['args'] = json.dumps(tx_dict['args'])
+        try:
+            with sqlite3.connect(db_path) as conn:
+                query = "INSERT INTO non_mined_transactions VALUES(?, ?, ?, ?, ?, ?, ?)"
+                conn.execute(query, tuple(tx_dict.values()))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
+    def get_transaction(self, hash):
+        with sqlite3.connect(db_path) as conn:
+                query = "SELECT * FROM non_mined_transactions WHERE tx_hash = ?"
+                cursor = conn.execute(query, (hash,))
+                return cursor.fetchall()
+
+    @classmethod
+    def add_connection(self, data):
+        addr = data.address
+        port = data.port
+        pk = data.pk
+        try:
+            with sqlite3.connect(db_path) as conn:
+                query = "INSERT INTO connected_nodes VALUES(?, ?, ?)"
+                conn.execute(query, (addr,port,pk))
+                conn.commit()
+                print("done")
+                return True
+        except Exception as e:
+            print('fail')
+            print(e)
+            return False
+
+    @classmethod
+    def get_pk(self):
+        query = 'SELECT public_key FROM profile'
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute(query)
+            return cursor.fetchall()
+
+    @classmethod
+    def get_connected_node(self, data):
+        query = 'SELECT * FROM connected_nodes where address = ? and port = ?'
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute(query, data)
+            return cursor.fetchall()
+
+    @classmethod
+    def get_balance(self, addr):
+        query = 'SELECT balance FROM state WHERE public_key = ?'
+
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute(query, (addr,))
+            return cursor.fetchall()
+
+    @classmethod
+    def update_state(self, bal, tx):
+        with sqlite3.connect(db_path) as conn:
+            # Update state for from_addr
+            query = "SELECT * FROM state WHERE public_key = ?"
+            cursor = conn.execute(query, (tx.from_addr,))
+            r_data = cursor.fetchall()
+            if len(r_data) != 0:
+                query = "UPDATE state set balance = ? where public_key = ?"
+                conn.execute(query, (bal, tx.from_addr))
+                conn.commit()
+
+            # Update state for to_addr
+            query = "SELECT * FROM state WHERE public_key = ?"
+            cursor = conn.execute(query, (tx.to_addr,))
+            r_data = cursor.fetchall()
+            if len(r_data) != 0:
+                query = "UPDATE state set balance = ? where public_key = ?"
+                b = int(r_data[0][1])
+                b += int(tx.value)
+                conn.execute(query, (b, tx.to_addr))
+                conn.commit()
+            else:
+                self.add_to_state(tx.to_addr)
+                query = "UPDATE state set balance = ? where public_key = ?"
+                conn.execute(query, (tx.value, tx.to_addr))
+                conn.commit()
+
+    @classmethod
+    def get_state(self):
+        query = 'SELECT * FROM state'
+
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute(query)
+            tmp = {}
+            for s in cursor:
+                tmp[s[0]] = {
+                    'balance': s[1],
+                    'body': s[2],
+                    'timestamps': json.loads(s[3]),
+                    'storage': json.loads(s[4])
+                }
+
+            return tmp
+
+    @classmethod
+    def add_to_state(self, addr):
+        with sqlite3.connect(db_path) as conn:
+            query = "INSERT INTO state VALUES(?, ?, ?, ?, ?)"
+            conn.execute(query, (addr, 0, "", json.dumps([]), json.dumps({})))
+            conn.commit()
+            return True
 
     def calli(self):
         with sqlite3.connect(db_path) as conn:

@@ -37,14 +37,28 @@ class Block:
 
         self.block_item = {
             "index": self.index,
-            "difficulty": self.difficulty,
             "timestamp": str(self.timestamp),
-            "nonce": self.nonce,
+            "data": tmp_tx,
+            "difficulty": self.difficulty,
             "merkle_root": self.merkle_root,
             "prev_hash": self.prev_hash,
-            "hash": self.hash,
-            "data": tmp_tx
+            "nonce": self.nonce,
+            "hash": self.hash
         }
+
+    @classmethod
+    def get_blk_object(self, el):
+        txs = []
+        for tx in json.loads(el[2]):
+            i = Transaction.get_tx_object(tx)
+            txs.append(i)
+
+        blk = Block(int(el[0]), el[1], txs, el[5], int(el[3]))
+        blk.merkle_root = el[4]
+        blk.hash = el[7]
+        blk.nonce = int(el[6])
+
+        return blk
 
     def get_hash(self):
         str_val = str(self.index) + str(self.timestamp) + json.dumps(self.block_item['data']) + str(self.difficulty) + self.prev_hash + str(self.nonce) + self.merkle_root

@@ -49,16 +49,34 @@ class Transaction:
             'to_addr': self.to_addr,
             'value': self.value,
             'gas': self.gas,
-            'args': self.args,
+            'args': json.dumps(self.args),
             'timestamp': self.timestamp,
             'tx_hash' : self.tx_hash
         }
 
     @classmethod
-    def is_valid(self, tx, state):
-        if tx['from_addr'] == "" or tx['to_addr'] == "":
-            print('failed first')
-            return False
+    def get_tx_object(self, el):
+        if type(el) == dict:
+            tx = Transaction(el['from_addr'], el['to_addr'], int(el['value']), int(el['gas']), el['args'], el['timestamp'])
+            tx.tx_hash = el['tx_hash']
+            tx.set_transaction()
+        else:
+            if el[4] == None or el[4] == "" or el[4] == "[]":
+                args = []
+            else:
+                args = json.loads(el[4])
+
+            tx = Transaction(el[0], el[1], el[2], el[3], args, el[5])
+            tx.tx_hash = el[6]
+            tx.set_transaction()
+
+        return tx
+
+    @classmethod
+    def is_valid(self, tx):
+        # if tx['from_addr'] == "" or tx['to_addr'] == "":
+        #     print('failed first')
+        #     return False
 
         if int(tx['value']) < 0:
             print('failed second')
@@ -68,9 +86,9 @@ class Transaction:
             print('failed thir')
             return False
 
-        if (state[tx['from_addr']]['balance'] if state[tx['from_addr']] != None else 0) < int(tx['value']) + int(tx['gas']):
-            print('failed forth')
-            return False
+        # if (state[tx['from_addr']]['balance'] if state[tx['from_addr']] != None else 0) < int(tx['value']) + int(tx['gas']):
+        #     print('failed forth')
+        #     return False
     
         return True
 

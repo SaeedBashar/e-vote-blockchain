@@ -1,4 +1,5 @@
 from src.blockchain.mudscript.mudscript import mud_script
+from database.database import Database as db
 
 def change_state(new_block, state):
     for tx in new_block.data:
@@ -9,6 +10,7 @@ def change_state(new_block, state):
                 'timestamps': [],
                 'storage': {}
             }
+            db.add_to_state(tx.to_addr)
         
         if (not tx.from_addr in state):
             state[tx.from_addr] = {
@@ -17,6 +19,7 @@ def change_state(new_block, state):
                 'timestamps': [],
                 'storage': {}
             }
+            db.add_to_state(tx.from_addr)
 
             if (tx.to_addr.startswith("SC")):
                 state[tx.from_addr]['body'] = tx.to_addr
