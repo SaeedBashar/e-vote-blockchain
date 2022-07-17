@@ -7,6 +7,12 @@ import os.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "evoting.sqlite3")
 
+def auth_registrar(arg):
+    query = "SELECT * FROM Registrar WHERE name = ? AND pword = ?"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, arg)
+        return cursor.fetchall()
+
 def get_data(arg, data):
     if arg == 'voterId':
         query = "SELECT voterId FROM Voters WHERE username = ? AND password = ?"

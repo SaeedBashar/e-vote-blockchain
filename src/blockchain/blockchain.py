@@ -3,6 +3,9 @@ import binascii
 import hashlib
 import json
 import math
+import os
+from pathlib import Path
+import sys
 import threading
 from threading import Thread
 
@@ -14,18 +17,15 @@ from Crypto.Signature import PKCS1_v1_5
 
 import time as tm
 from time import time
+from datetime import datetime as dt
+
 
 from src.blockchain import keygen
 from src.blockchain.transaction import Transaction
 from src.blockchain.block import Block
 from src.blockchain import miner
 
-keys = keygen.gen_key_pair()
-private_key = keys['private_key']
-public_key = keys['public_key']
-KEY_PAIR = keys['key_pair']
-
-tmp_public_key = '30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001'
+init_public_key = '30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001'
 
 from database.database import Database as db
 
@@ -41,8 +41,12 @@ class Blockchain:
                 tx_obj = Transaction.get_tx_object(tx)
                 self.transactions.append(tx_obj)
         else:
-            self.initial_coin_release = Transaction(None, tmp_public_key, 100000000000, 0, [], 0)
-            db.add_transaction(self.initial_coin_release)
+            if len(db.get_data('mined_transactions')) == 0:
+                # Set the time to the begining of the year 2022 for initial transaction
+                t = dt.timestamp(dt(2022, 1, 1))
+                self.initial_transaction = Transaction(None, init_public_key, 0, 0, ['Initial Mudcoin Transaction'], t)
+                db.add_transaction(self.initial_transaction)
+                db.add_to_state(init_public_key)
         
 
         self.difficulty = 4
@@ -62,34 +66,34 @@ class Blockchain:
         else:
             self.create_genesis_block()
 
-        self.state = {
-            tmp_public_key : {
-                'balance': 100000000000,
-                'body': "",
-                'timestamps': [],
-                'storage': {}
-            }
-        }
-
     def create_genesis_block(self):
-        block = Block(0, '123456789', [self.initial_coin_release], '', self.difficulty)
+        t = dt.timestamp(dt(2022, 1, 1))
+        block = Block(0, t, [self.initial_transaction], '', self.difficulty)
+
+        # Add initial transaction to mined txs and remove from umined txs
+        db.add_to_mined_tx(0, self.initial_transaction)
+        self.transactions = list(filter(lambda tx: tx.tx_hash != self.initial_transaction.tx_hash, self.transactions))
+        
         block.prev_hash = '0' * 64
         block.mine_block(self.difficulty)
 
         self.chain.append(block)
         db.add_block(block)
 
-    def start_miner(self):
+    def start_miner(self, addr, send_nodes):
 
         self.miner_thread = ThreadWithReturnValue(target=miner.mine, name='MinerThread', args=(self,))
         self.miner_thread.start()
 
         mined_block = self.miner_thread.join()
-        # print('from mine ')
-        # print(mined_block.block_item)
+
+        if mined_block != None:
+            mining_reward_tx = Transaction(None, addr, self.reward, 0)
+            self.add_transaction(mining_reward_tx.tx_item, send_nodes)
+        
         return mined_block
 
-    def add_block(self, n_block, temp_state):
+    def add_block(self, n_block):
 
         is_valid_block = False
 
@@ -161,84 +165,195 @@ class Blockchain:
         db.add_block(tmp_block)
 
         self.miner_thread.stop()
-        self.transactions = list(filter(lambda tx: Transaction.is_valid(tmp_txs)))
+
+        # Remove txs from non mined to mined txs
+        for t in tmp_txs:
+            db.add_to_mined_tx(len(self.chain), t)
+            self.transactions = list(filter(lambda tx: tx not in tmp_txs, self.transactions))
+
+        # self.transactions = list(filter(lambda tx: Transaction.is_valid(tx), tmp_txs))
 
         return {
             'status': True,
             'new_block': tmp_block
         }
     
-        # return {
-        #     'status': False,
-        #     'new_block': None
-        # }
 
     def add_transaction(self, trans, send_nodes, node_conn_exempt = None):
-        balance = self.get_balance(trans['from_addr'])
-        if balance == 0:
-            return {
-                "status": False,
-                "message": "[FAILED], No fund in this account"
-            }
-        elif balance - int(trans['value']) - int(trans['gas']) < 0:
-            return {
-                "status": False,
-                "message": "[FAILED], Not enough fund to transact"
-            }
-        else:
-            # for tx in self.transactions:
-            #     if tx.from_addr == trans['from_addr']:
-            #         balance -= tx.value + tx.gas
-
-            balance = balance - int(trans['value']) - int(trans['gas'])
-            if Transaction.is_valid(trans):
-                is_valid_tx = True
-                r_data = db.get_data('transactions')
-                tmp = []
-                for t in r_data:
-                    tmp.append(Transaction.get_tx_object(t))
-
-                self.transactions = tmp
-                tmp_txs = filter(lambda x: x.from_addr == trans['from_addr'], self.transactions)
-                
-                for tx in tmp_txs:
-                    if str(tx.timestamp) == trans['timestamp']:
-                        is_valid_tx = False
-
-                if is_valid_tx:
-                    tmp_tx = Transaction(
-                                    trans['from_addr'],
-                                    trans['to_addr'],
-                                    trans['value'],
-                                    trans['gas'],
-                                    trans['args'],
-                                    trans['timestamp']
-                                )
-
-                    self.transactions.append(tmp_tx)
-                    db.add_transaction(tmp_tx)
-                    db.update_state(balance, tmp_tx)
-                    data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": tmp_tx.tx_item}
-                    
-                    exclude_list = [trans['from_addr']]
-
-                    if node_conn_exempt != None:
-                        exclude_list.append(node_conn_exempt.pk)
-
-                    send_nodes(data, exclude_list)
+        if not trans['to_addr'] == None and trans['to_addr'][:2] != "SC":
+            if trans['from_addr'] != None: # if funds being transferred to another account
+                balance = self.get_balance(trans['from_addr'])
+                if balance == 0:
                     return {
-                        "status": True,
-                        "message": "[SUCCESS] Transaction made successfully"
+                        "status": False,
+                        "message": "[FAILED], No fund in this account"
                     }
+                elif balance - int(trans['value']) - int(trans['gas']) < 0:
+                    return {
+                        "status": False,
+                        "message": "[FAILED], Not enough fund to transact"
+                    }
+                else:
+                    
+                    balance = balance - int(trans['value']) - int(trans['gas'])
+                    if Transaction.is_valid(trans):
+                        is_valid_tx = True
+                        r_data = db.get_data('transactions')
+                        tmp = []
+                        for t in r_data:
+                            tmp.append(Transaction.get_tx_object(t))
+
+                        self.transactions = tmp
+                        tmp_txs = filter(lambda x: x.from_addr == trans['from_addr'], self.transactions)
+                        
+                        for tx in tmp_txs:
+                            if str(tx.timestamp) == trans['timestamp']:
+                                is_valid_tx = False
+
+                        if is_valid_tx:
+                            tmp_tx = Transaction(
+                                            trans['from_addr'],
+                                            trans['to_addr'],
+                                            trans['value'],
+                                            trans['gas'],
+                                            trans['args'],
+                                            trans['timestamp']
+                                        )
+
+                            self.transactions.append(tmp_tx)
+                            db.add_transaction(tmp_tx)
+                            db.update_state_obj(balance, tmp_tx)
+                            data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": tmp_tx.tx_item}
+                            
+                            exclude_list = [trans['from_addr']]
+
+                            if node_conn_exempt != None:
+                                exclude_list.append(node_conn_exempt.pk)
+
+                            send_nodes(data, exclude_list)
+                            return {
+                                "status": True,
+                                "message": "[SUCCESS] Transaction made successfully"
+                            }
+                        return {
+                            "status": False,
+                            "message": "[FAILED], Not valid transaction"
+                        }
+                    return {
+                            "status": False,
+                            "message": "[FAILED], Not valid transaction"
+                        }
+            
+            else: # mining reward being giving to a miner
+                
+                balance = self.get_balance(trans['to_addr'])
+                tmp_tx = Transaction(
+                                            trans['from_addr'],
+                                            trans['to_addr'],
+                                            trans['value'],
+                                            trans['gas'],
+                                            trans['args'],
+                                            trans['timestamp']
+                                        )
+
+                self.transactions.append(tmp_tx)
+                db.add_transaction(tmp_tx)
+                db.update_state_obj(balance, tmp_tx)
+                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": tmp_tx.tx_item}
+                
+                exclude_list = []
+
+                if node_conn_exempt != None:
+                    exclude_list.append(node_conn_exempt.pk)
+
+                send_nodes(data, exclude_list)
                 return {
-                    "status": False,
-                    "message": "[FAILED], Not valid transaction"
+                    "status": True,
+                    "message": "[SUCCESS] Transaction made successfully"
                 }
+        elif trans['to_addr'] == None:
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            contract_path = os.path.join(BASE_DIR, "contracts\{}.py".format(trans['contract_addr']))
+
+            path = Path(contract_path)
+            if not path.exists():
+                path.write_text(trans['args'][0])
+
+            # status = db.add_to_state(trans['contract_addr'])
+            tmp_tx = Transaction(
+                                        trans['from_addr'],
+                                        trans['to_addr'],
+                                        trans['value'],
+                                        trans['gas'],
+                                        trans['args'],
+                                        trans['timestamp']
+                                    )
+
+            self.transactions.append(tmp_tx)
+            db.add_transaction(tmp_tx)
+            status = db.update_state_obj(trans['value'], tmp_tx)
+            if status:
+                import imp
+
+                fp, path, desc = imp.find_module(str(trans['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
+                c_module = imp.load_module(str(trans['contract_addr']), fp, path, desc)
+                sys.modules[trans['contract_addr']] = c_module
+
+                contract_tx = Transaction(trans['contract_addr'], None, 0, 0)
+                db.update_state_obj(0, contract_tx)
+
+                state = db.get_state()[trans['contract_addr']]
+                return_state = c_module.contract(action='init', state = state)
+                db.update_state_cont(trans['contract_addr'], return_state)
+
+                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}
+                        
+                exclude_list = [trans['from_addr']]
+
+                if node_conn_exempt != None:
+                    exclude_list.append(node_conn_exempt.pk)
+
+                send_nodes(data, exclude_list)
+                
+            return {'status': True, 'message': 'done'}
+
+        elif trans['to_addr'][:2] == 'SC':
+            import imp
+
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            fp, path, desc = imp.find_module(trans['to_addr'][2:], path=[os.path.join(BASE_DIR, "contracts")])
+            c_module = imp.load_module(trans['to_addr'][2:], fp, path, desc)
+            
+            state = db.get_state()[trans['to_addr'][2:]]
+
+            return_state = c_module.contract(action='vote_cast', state = state, args = trans['args'])
+            db.update_state_cont(trans['to_addr'][2:], return_state)
+            tmp_tx = Transaction(
+                                        trans['from_addr'],
+                                        trans['to_addr'],
+                                        trans['value'],
+                                        trans['gas'],
+                                        trans['args'],
+                                        trans['timestamp']
+                                    )
+
+            self.transactions.append(tmp_tx)
+            db.add_transaction(tmp_tx)
+
+            data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}            
+            exclude_list = [trans['from_addr']]
+
+            if node_conn_exempt != None:
+                exclude_list.append(node_conn_exempt.pk)
+
+            send_nodes(data, exclude_list)
+            return {'status': True, 'message': 'done'}
+        else:
+            print('Invalid Transaction')
             return {
                     "status": False,
-                    "message": "[FAILED], Not valid transaction"
+                    "message": "[FAILED], Invalid transaction"
                 }
-
 
     def tx_to_add_block(self):
         tmp_tx = []

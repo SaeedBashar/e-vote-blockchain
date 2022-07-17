@@ -78,24 +78,6 @@ class Block:
 
     def has_valid_transactions(self, block, state):
 
-        path = Path('keypair/keypair.json')
-        pub_key = json.loads(path.read_text())['public_key']
-
-        gas = 0
-        reward = 0
-        balances = {}
-
-        for tx in block['data']:
-            if tx['from_addr'] != pub_key:
-                if balances[tx['from_add']] is None:
-                    balances[tx['from_addr']] = (state[tx['from_addr']]['balance'] if state[tx['from_addr']] else 0) - tx['value'] - tx['gas']
-                else:
-                    balances[tx['from']] -= tx['value'] + tx['gas']
-                gas += tx['gas']
-            else:
-                reward = tx['value']
-
-
         for tx in block.data:
             if Transaction.is_valid(tx) == False:
                 return False

@@ -20,7 +20,12 @@ class Database:
             with sqlite3.connect(db_path) as conn:
                 cursor = conn.execute(query)
                 return cursor.fetchall()
+        elif arg == 'mined_transactions':
+            query = "SELECT * FROM mined_transactions"
 
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                return cursor.fetchall()
         elif arg == 'blocks':
             query = "SELECT * FROM Chain"
 
@@ -30,6 +35,12 @@ class Database:
 
         elif arg == 'nodes':
             query = "SELECT * FROM connected_nodes"
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                return cursor.fetchall()
+        elif arg == 'contracts':
+            query = "SELECT * FROM state"
 
             with sqlite3.connect(db_path) as conn:
                 cursor = conn.execute(query)
@@ -110,11 +121,39 @@ class Database:
             return False
 
     @classmethod
+    def add_to_mined_tx(self, blk_index, data):
+        try:
+            with sqlite3.connect(db_path) as conn:
+                query = "INSERT INTO mined_transactions VALUES(?, ?, ?, ?, ?, ?, ?, ?)"
+                tx_dict = data.tx_item
+
+                tmp = [blk_index]
+                tmp.extend(list(tx_dict.values()))
+                conn.execute(query, tuple(tmp))
+                conn.commit()
+
+
+                query = "DELETE FROM non_mined_transactions WHERE tx_hash = ?"
+                conn.execute(query, (data.tx_hash,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
     def get_transaction(self, hash):
         with sqlite3.connect(db_path) as conn:
                 query = "SELECT * FROM non_mined_transactions WHERE tx_hash = ?"
                 cursor = conn.execute(query, (hash,))
-                return cursor.fetchall()
+                tmp = cursor.fetchall()
+
+                if len(tmp) == 0: # if the transaction was not found in pending transactions
+                    query = "SELECT * FROM mined_transactions WHERE tx_hash = ?"
+                    cursor = conn.execute(query, (hash,))
+                    return cursor.fetchall()
+                
+                return tmp
 
     @classmethod
     def add_connection(self, data):
@@ -156,32 +195,38 @@ class Database:
             return cursor.fetchall()
 
     @classmethod
-    def update_state(self, bal, tx):
+    def update_state_obj(self, bal, tx):
         with sqlite3.connect(db_path) as conn:
-            # Update state for from_addr
-            query = "SELECT * FROM state WHERE public_key = ?"
-            cursor = conn.execute(query, (tx.from_addr,))
-            r_data = cursor.fetchall()
-            if len(r_data) != 0:
-                query = "UPDATE state set balance = ? where public_key = ?"
-                conn.execute(query, (bal, tx.from_addr))
-                conn.commit()
+            if tx.from_addr != None:
+                # Update state for from_addr
+                query = "SELECT * FROM state WHERE public_key = ?"
+                cursor = conn.execute(query, (tx.from_addr,))
+                r_data = cursor.fetchall()
+                if len(r_data) != 0:
+                    query = "UPDATE state set balance = ? where public_key = ?"
+                    conn.execute(query, (bal, tx.from_addr))
+                    conn.commit()
+                else:
+                    self.add_to_state(tx.from_addr)
 
-            # Update state for to_addr
-            query = "SELECT * FROM state WHERE public_key = ?"
-            cursor = conn.execute(query, (tx.to_addr,))
-            r_data = cursor.fetchall()
-            if len(r_data) != 0:
-                query = "UPDATE state set balance = ? where public_key = ?"
-                b = int(r_data[0][1])
-                b += int(tx.value)
-                conn.execute(query, (b, tx.to_addr))
-                conn.commit()
-            else:
-                self.add_to_state(tx.to_addr)
-                query = "UPDATE state set balance = ? where public_key = ?"
-                conn.execute(query, (tx.value, tx.to_addr))
-                conn.commit()
+            if tx.to_addr != None:
+                # Update state for to_addr
+                query = "SELECT * FROM state WHERE public_key = ?"
+                cursor = conn.execute(query, (tx.to_addr,))
+                r_data = cursor.fetchall()
+                if len(r_data) != 0:
+                    query = "UPDATE state set balance = ? where public_key = ?"
+                    b = int(r_data[0][1])
+                    b += int(tx.value)
+                    conn.execute(query, (b, tx.to_addr))
+                    conn.commit()
+                else:
+                    self.add_to_state(tx.to_addr)
+                    query = "UPDATE state set balance = ? where public_key = ?"
+                    conn.execute(query, (tx.value, tx.to_addr))
+                    conn.commit()
+
+        return True
 
     @classmethod
     def get_state(self):
@@ -203,8 +248,23 @@ class Database:
     @classmethod
     def add_to_state(self, addr):
         with sqlite3.connect(db_path) as conn:
+            # Check for existence of address before inserting
+            query = "SELECT public_key FROM state"
+            cursor = conn.execute(query)
+            for x in cursor.fetchall():
+                if x[0] == addr:
+                    return False
+
             query = "INSERT INTO state VALUES(?, ?, ?, ?, ?)"
             conn.execute(query, (addr, 0, "", json.dumps([]), json.dumps({})))
+            conn.commit()
+            return True
+
+    @classmethod
+    def update_state_cont(self, addr, state):
+        with sqlite3.connect(db_path) as conn:
+            query = "UPDATE state set balance = ?, body = ?, timestamps = ?, storage = ? where public_key = ?"
+            conn.execute(query, (state['balance'], state['body'], json.dumps(state['timestamps']), json.dumps(state['storage']), addr))
             conn.commit()
             return True
 

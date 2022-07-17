@@ -58,8 +58,7 @@ def submit_ballot():
     for ea in session['ELECTION_AUTH']:
         response = requests.post("http://" + ea + "/submit-ballot",json=ballot_paper)
 
-    return jsonify({'status': True})
-
+    return {'status': True}
 
 def completeBallot(arg):
     arg['signature'] = session['SIGNATURE']

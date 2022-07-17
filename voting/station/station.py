@@ -23,14 +23,17 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 
 app = Flask(__name__)
 
-nodes = []
-reg_public_key = ""
 
 def get_info():
+    global nodes
+    global reg_public_key
+    global contract_addr
+    
     response = requests.post('http://127.0.0.1:7000/get-info', json={'addr': '127.0.0.1:6000'})
     
     reg_public_key = response.json()['public_key']
     nodes = response.json()['nodes']
+    contract_addr = response.json()['contract_addr']
 
 get_info()
 
@@ -42,6 +45,17 @@ def submit_ballot():
     
     # if res['status'] == True:
     response = requests.post('http://127.0.0.1:7000/user-vote', json={'user_id': x['user_id']})
+
+    # Construct a transaction and send to miner nodes
+    transaction = {
+        'from_addr': reg_public_key,
+        'to_addr': 'SC' + contract_addr,
+        'value': 0,
+        'gas': 0,
+        'args': [x['voted_candidates']]
+    }
+    for n in nodes:
+        response = requests.post('http://192.168.56.1:4000/transactions', json=transaction)
 
     return jsonify({'status': True})
 

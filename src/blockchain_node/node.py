@@ -17,7 +17,6 @@ import json
 import threading
 
 from src.blockchain import keygen
-from src.blockchain.state import change_state, trigger_contract
 from src.blockchain_node.node_connection import Node_connection
 from src.blockchain.blockchain import Blockchain
 from src.blockchain.block import Block
@@ -25,18 +24,6 @@ from src.blockchain.transaction import Transaction
 from src.blockchain import miner
 
 from database.database import Database as db
-
-# Variables for testing purposes
-temp_state = {
-    "state": {"30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001":
-                   {
-                    "balance":100000000000,
-                    "body":"",
-                    "timestamps":[],
-                    "storage":{}
-                    }
-            }
-}
 
 class Node(threading.Thread):
     def __init__(self, address, port, max_connections=10):
@@ -59,7 +46,6 @@ class Node(threading.Thread):
         self.blockchain = Blockchain()
         self.temporary_chain = [self.blockchain.chain[0]]
 
-        is_mined = False
         self.enable_mining = True
         self.enable_logging = True
         self.enable_chain_request = True
@@ -70,21 +56,8 @@ class Node(threading.Thread):
     @property
     def all_nodes(self):
 
-        # get and initiliaze connected_nodes if it's empty
-        # r_data = tuple(db.get_data())
-        # thread_list = []
-        # for n in r_data:
-        #     t = threading.Thread(target=self.connect_with_node, args=(n[0], n[1]))
-        #     t.start()
-        #     thread_list.append(t)
-
-        # for t in thread_list:
-        #     if t.is_alive():
-        #         t.join(0.2)
-
         tmp_nodes = []
         tmp = {}
-        # all_nodes = self.connected_nodes
         all_nodes = set(self.nodes_inbound + self.nodes_outbound)
         if all_nodes != []:
             for n in all_nodes:
@@ -101,7 +74,8 @@ class Node(threading.Thread):
         keys = keygen.gen_key_pair()
         self.private_key = keys['private_key']
         self.public_key = keys['public_key']
-        self.key_pair = keys['key_pair']
+
+        return keys
 
     def init_server(self):
         print("[INITIALIZATION] Node initializing...")
@@ -124,30 +98,28 @@ class Node(threading.Thread):
         return status
 
     def start_mining(self):
-        thread_list = [x for x in threading.enumerate()]
+        # thread_list = [x for x in threading.enumerate()]
         thread_names = [x.getName() for x in threading.enumerate()]
-        # for t in thread_list:
-        # if 'MinerThread' == t.getName():
-        #     pass
+        
         try:
             if 'MinerThread' in thread_names:
+
                 return {"status": True, "msg": "Miner is already running..."}
+            
             else:
-                mined_block = self.blockchain.start_miner()
+                mined_block = self.blockchain.start_miner(self.public_key, self.send_to_nodes)
+                
+                if mined_block != None:
+                    self.blockchain.chain.append(mined_block)
+                    db.add_block(mined_block)
 
-                self.blockchain.chain.append(mined_block)
-                db.add_block(mined_block)
+                    data = {'type': 'NEW_BLOCK_REQUEST', 'block': mined_block.block_item}
+                    self.send_to_nodes(data, [])
 
-                # state = db.get_state()
+                    return {"status": True, "msg": "A New Block Has Been Mined!!"}
+                else:
+                    return {"status": True, "msg": "No Transactions Available!!!"}
 
-                # temp_state['state'] = change_state(mined_block, state)
-
-                # trigger_contract(self.blockchain.chain[-1], temp_state['state'], self.blockchain, self.enable_logging)
-
-                data = {'type': 'NEW_BLOCK_REQUEST', 'block': mined_block.block_item}
-                self.send_to_nodes(data, [])
-
-                return {"status": True, "msg": "Miner has mined a new block..."}
         except Exception as e:
             print(e)
             return {"status": False, "msg": "Could not start miner..."}
@@ -227,13 +199,10 @@ class Node(threading.Thread):
 
                 n_block = data['block']
 
-                return_data = self.blockchain.add_block(n_block, temp_state['state'])
+                return_data = self.blockchain.add_block(n_block)
 
                 if return_data['status']:
-                    temp_state['state'] = change_state(return_data['new_block'], temp_state['state'])
-
-                    trigger_contract(self.blockchain.chain[-1], temp_state['state'], self.blockchain, self.enable_logging)
-
+                   
                     data = {'type': 'NEW_BLOCK_REQUEST', 'block': return_data['new_block'].block_item}
                     self.send_to_nodes(data, [node_conn.pk])
                     self.enable_mining = False
@@ -283,7 +252,7 @@ class Node(threading.Thread):
                         self.temporary_chain.append(tmp_block)
 
                         is_chain_valid = True
-                        dif = 1
+                        dif = 4
                         initial_state = {"30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001":
                             {
                             "balance":100000000000,
@@ -308,8 +277,8 @@ class Node(threading.Thread):
                                 self.log("Failed first test")
                                 is_chain_valid = False
 
-                            # TODO:: temp_state will be checked later
-                            if not Block.has_valid_transactions(cur_block, temp_state['state']):
+                            state = db.get_state()
+                            if not Block.has_valid_transactions(cur_block, state):
                                 self.log("Failed second test")
                                 is_chain_valid = False
 
@@ -333,22 +302,36 @@ class Node(threading.Thread):
                             if is_chain_valid:
                                 if int(n_block['index']) % 100 == 0:
                                     dif = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
-                                    
-                                initial_state = change_state(cur_block, initial_state)
-                                trigger_contract(cur_block, initial_state)
+
                             else:
                                 break
 
                         if is_chain_valid:
                             self.blockchain.chain = self.temporary_chain
                             self.blockchain.difficulty = dif
-                            temp_state['state'] = initial_state
+
+                            response_data = {
+                                'type': 'STATE_REQUEST'
+                            }
+                            node_conn.send(response_data, compression='bzip2')
 
                             self.temporary_chain = []
                             self.enable_chain_request = False
                         else:
                             self.log("[INVALID] Chain is invalid")
                             
+            elif data['type'] == 'STATE_REQUEST':
+
+                response_data = {
+                        'type': 'STATE_RESPONSE',
+                        'state': db.get_state()
+                    }
+                node_conn.send(response_data, compression='bzip2')
+
+            elif data['type'] == 'STATE_RESPONSE':
+                for st in data['state']:
+                    db.add_to_state(st)
+                    db.update_state_cont(st, data['state'][st])
 
         self.log("[RECEIVED MESSAGE]: Data from node %s:[%s]" % (node_conn.address, str(data)))
 
@@ -366,18 +349,6 @@ class Node(threading.Thread):
                 self.log(f"[EXCLUSION] Node {n.address}:{n.port} is excluded")
             else:
                 self.send_to_node(n, data, compression)
-
-        #mod for n in self.nodes_inbound:
-        #mod     if n in exclude:
-        #mod         self.debug_print(f"[EXCLUSION - inbound] Node {n.addr}:{n.port} is excluded")
-        #mod     else:
-        #mod         self.send_to_node(n, data, compression)
-
-        #mod for n in self.nodes_outbound:
-        #mod     if n in exclude:
-        #mod         self.debug_print(f"[EXCLUSION - outbound] Node {n.addr}:{n.port} is excluded")
-        #mod     else:
-        #mod         self.send_to_node(n, data, compression)
 
 
     def send_to_node(self, n, data, compression='none'):
