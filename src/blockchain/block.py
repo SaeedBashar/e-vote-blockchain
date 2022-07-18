@@ -16,7 +16,7 @@ from src.blockchain.merkle_tree import Merkle_tree
 from src.blockchain.transaction import Transaction
 
 class Block:
-    def __init__(self, index, timestamp, data, prev_hash, difficulty = 1) -> None:
+    def __init__(self, index, timestamp, data, prev_hash, difficulty = 4) -> None:
         self.index = index
         self.timestamp = timestamp
         self.data = data
@@ -76,10 +76,11 @@ class Block:
             self.hash = self.get_hash()
         self.set_block()
 
+    @classmethod
     def has_valid_transactions(self, block, state):
 
-        for tx in block.data:
-            if Transaction.is_valid(tx) == False:
-                return False
+        # for tx in block.data:
+        #     if Transaction.is_valid(tx) == False:
+        #         return False
             
         return True

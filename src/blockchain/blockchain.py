@@ -178,7 +178,6 @@ class Blockchain:
             'new_block': tmp_block
         }
     
-
     def add_transaction(self, trans, send_nodes, node_conn_exempt = None):
         if not trans['to_addr'] == None and trans['to_addr'][:2] != "SC":
             if trans['from_addr'] != None: # if funds being transferred to another account
@@ -408,6 +407,7 @@ class ThreadWithReturnValue(Thread):
                 if self._target is not None:
                     self._return = self._target(*self._args,
                                                         **self._kwargs)
+            
             def join(self, *args):
                 Thread.join(self, *args)
                 return self._return

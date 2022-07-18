@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 
 
 parser = ArgumentParser()
-parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
+parser.add_argument('-p', '--port', default=5001, type=int, help='port to listen on')
 args = parser.parse_args()
 port = args.port
 
@@ -475,20 +475,21 @@ def mine_block():
     else:
         return jsonify({'status': False,'message': return_data['msg']})
 
-@app.route('/get_chain', methods=['GET'])
-def get_chain():
-    block_data = request.args.to_dict()
-    tmp = []
-    if block_data != {}:
-        tmp = host_node.extract_chain_part(block_data['index'])
-    else:
-        for b in host_node.blockchain.chain:
-            tmp.append(b.block_item)
+@app.route('/sync', methods=['GET'])
+def sync_chain():
+    
+    return_data = host_node.sync_chain()
 
-    return jsonify({
-        'chain': tmp,
-        'length': len(tmp)
-    })
+    return jsonify(return_data)
+
+@app.route('/check-sync-complete')
+def check_sync():
+    # Checks to see if synchronization is still in progress
+    if host_node.sync_finished:
+        return {'status': True, 'message': 'Synchronization completed Successfully'}
+    else:
+        return {'status': False, 'message': 'Synchronization is still in progress...'}
+ 
 
 @app.errorhandler(404)
 def page_not_found(error):

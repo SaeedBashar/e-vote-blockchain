@@ -46,21 +46,21 @@ class Node_connection(threading.Thread):
                 compressed = base64.b64encode( lzma.compress(data) + b'lzma' )
 
             else:
-                self.node.debug_print("[UNKNOWN COMPRESSION]: Compression type unknown")
+                self.node.log("[UNKNOWN COMPRESSION]: Compression type unknown")
 
         except Exception as e:
-            self.node.debug_print("[COMPRESSION ERROR]: " + str(e))
+            self.node.log("[COMPRESSION ERROR]: " + str(e))
 
-        self.node.debug_print(data + ":compress:b64encode:" + str(compressed))
-        self.node.debug_print(data + ":compress:compression:" + str(int(10000*len(compressed)/len(data))/100) + "%")
+        # self.node.log(data + ":compress:b64encode:" + str(compressed))
+        # self.node.log(data + ":compress:compression:" + str(int(10000*len(compressed)/len(data))/100) + "%")
 
         return compressed
 
     def decompress(self, compressed):
         
-        self.node.debug_print(self.id + ":decompress:input: " + str(compressed))
+        self.node.log(self.id + ":decompress:input: " + str(compressed))
         compressed = base64.b64decode(compressed)
-        self.node.debug_print(self.id + ":decompress:b64decode: " + str(compressed))
+        self.node.log(self.id + ":decompress:b64decode: " + str(compressed))
 
         try:
             if compressed[-4:] == b'zlib':
@@ -74,7 +74,7 @@ class Node_connection(threading.Thread):
         except Exception as e:
             print("Exception: " + str(e))
 
-        self.node.debug_print(self.id + ":decompress:result: " + str(compressed))
+        # self.node.log(self.id + ":decompress:result: " + str(compressed))
 
         return compressed
 

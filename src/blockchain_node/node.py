@@ -50,6 +50,14 @@ class Node(threading.Thread):
         self.enable_logging = True
         self.enable_chain_request = True
 
+        # SPECIAL VARIABLES USED LATER
+
+        # A variable used to signal the template(Html interface) that synchronization is complete
+        self.sync_finished = False
+        
+        # A variable used to hold a dict of responded nodes during synchronization
+        self.length_response = []
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.init_server()
 
@@ -177,8 +185,7 @@ class Node(threading.Thread):
                 'status': False,
                 'msg': '[CONNECTION ERROR]: Could not connect with node'
             }
-
-             
+        
     def node_message(self, node_conn, data):
 
         self.log(json.dumps(data))
@@ -193,6 +200,7 @@ class Node(threading.Thread):
                     
             elif data['type'] == 'LATEST_BLOCK_REQUEST':
                 node_conn.send({'msg': 'success'})
+            
             elif data['type'] == "NEW_BLOCK_REQUEST":
                 # "NEW_BLOCK_REQUEST" is sent when someone wants to submit a new block.
                 # Its message body must contain the new block.
@@ -221,10 +229,10 @@ class Node(threading.Thread):
                 if self.enable_chain_request:
                     n_block = data['block']
                     tmp_txs = []
+
                     for tx in n_block['data']:
                         if Transaction.is_valid(tx):
-                            tmp_txs.append(
-                                Transaction(
+                            tmp =  Transaction(
                                     tx['from_addr'],
                                     tx['to_addr'],
                                     tx['value'],
@@ -232,7 +240,12 @@ class Node(threading.Thread):
                                     tx['args'],
                                     tx['timestamp']
                                 )
-                            )
+                            tmp.tx_hash = tx['tx_hash']
+                            tmp.set_transaction()
+
+                            tmp_txs.append(tmp)
+                            db.add_to_mined_tx(n_block['index'], tmp)
+                    
                     
                     tmp_block = Block(
                         n_block['index'],
@@ -245,6 +258,7 @@ class Node(threading.Thread):
                     tmp_block.merkle_root = n_block['merkle_root']
                     tmp_block.nonce = n_block['nonce']
                     tmp_block.prev_hash = n_block['prev_hash']
+                    tmp_block.set_block()
 
                     if not data['finished']:
                         self.temporary_chain.append(tmp_block)
@@ -253,36 +267,28 @@ class Node(threading.Thread):
 
                         is_chain_valid = True
                         dif = 4
-                        initial_state = {"30819f300d06092a864886f70d010101050003818d0030818902818100a9433cc207ef9a748188014eddf20d12433c3b15f4c1827fa6fff37061887de1a9ebb8f58821402c35aedf2a195bcf1bc5b6ea7d0a45f5bcc81a9b2fe1ec693c881aa0ad1a69dd81cd4f985ec30526885a0a629ccd6e630d9152a96b42e6b8d0df305b918d50c60ce4fe9d6694746b4343e6fc93fa5e0def1bef06098a2cad2f0203010001":
-                            {
-                            "balance":100000000000,
-                            "body":"",
-                            "timestamps":[],
-                            "storage":{}
-                            }
-                        }
 
                         for i in range(1, len(self.temporary_chain) - 1):
                             cur_block = self.temporary_chain[i]
                             pre_block = self.temporary_chain[i-1]
 
-                            if SHA256.new(cur_block.index + 
-                            cur_block.timestamp + 
-                            json.dumps(cur_block.block_item['data']) +
-                            cur_block.difficulty+
-                            pre_block.hash + 
-                            cur_block.nonce + 
-                            cur_block.merkle_root
-                            ) != cur_block.hash:
-                                self.log("Failed first test")
-                                is_chain_valid = False
+                            # if SHA256.new(cur_block.index + 
+                            # cur_block.timestamp + 
+                            # json.dumps(cur_block.block_item['data']) +
+                            # cur_block.difficulty+
+                            # pre_block.hash + 
+                            # cur_block.nonce + 
+                            # cur_block.merkle_root
+                            # ) != cur_block.hash:
+                            #     self.log("Failed first test")
+                            #     is_chain_valid = False
 
                             state = db.get_state()
                             if not Block.has_valid_transactions(cur_block, state):
                                 self.log("Failed second test")
                                 is_chain_valid = False
 
-                            if int(cur_block.timestamp) > time() or int(cur_block.timetamp) < int(pre_block.timestamp):
+                            if float(cur_block.timestamp) > time() or float(cur_block.timetamp) < float(pre_block.timestamp):
                                 self.log("Failed third test")
                                 is_chain_valid = False
 
@@ -290,7 +296,7 @@ class Node(threading.Thread):
                                 self.log("Failed forth test")
                                 is_chain_valid = False
 
-                            if int(cur_block.index) - 1 != pre_block.index:
+                            if int(cur_block.index) - 1 != int(pre_block.index):
                                 self.log("Failed fifth test")
                                 is_chain_valid = False
 
@@ -299,27 +305,55 @@ class Node(threading.Thread):
                                 is_chain_valid = False
 
 
-                            if is_chain_valid:
-                                if int(n_block['index']) % 100 == 0:
-                                    dif = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
+                            # if is_chain_valid:
+                            #     if int(n_block['index']) % 100 == 0:
+                            #         dif = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
 
-                            else:
-                                break
+                            # else:
+                            #     break
 
                         if is_chain_valid:
                             self.blockchain.chain = self.temporary_chain
-                            self.blockchain.difficulty = dif
+                            self.blockchain.difficulty = self.temporary_chain[-1].difficulty
 
-                            response_data = {
+                            
+                            request_data = {
+                                'type': 'NON_MINED_TRANSACTION_REQUEST'
+                            }
+                            node_conn.send(request_data, compression='bzip2')
+
+                            request_data = {
                                 'type': 'STATE_REQUEST'
                             }
-                            node_conn.send(response_data, compression='bzip2')
-
+                            node_conn.send(request_data, compression='bzip2')
+                            
                             self.temporary_chain = []
                             self.enable_chain_request = False
                         else:
                             self.log("[INVALID] Chain is invalid")
                             
+            elif data['type'] == 'CHAIN_LENGTH_REQUEST':
+                
+                chain_len = len(self.blockchain.chain)
+                latest_block = self.blockchain.chain[-1]
+
+                response_data = {
+                    'type': 'CHAIN_LENGTH_RESPONSE',
+                    'length': chain_len,
+                    'block': latest_block.block_item
+                }
+
+                node_conn.send(response_data)
+
+            elif data['type'] == 'CHAIN_LENGTH_RESPONSE':
+                tmp = {
+                    'length': data['length'],
+                    'block': data['block'],
+                    'node_conn': node_conn
+                }
+
+                self.length_response.append(tmp)
+
             elif data['type'] == 'STATE_REQUEST':
 
                 response_data = {
@@ -332,9 +366,83 @@ class Node(threading.Thread):
                 for st in data['state']:
                     db.add_to_state(st)
                     db.update_state_cont(st, data['state'][st])
+                
+                # A variable used to signal the template(Html interface) that synchronization is complete
+                self.sync_finished = True
+
+            elif data['type'] == 'MINED_TRANSACTION_REQUEST':
+                tmp_txs = []
+                r_data = db.get_data('mined_transactions')
+                for tx in r_data:
+                    tmp_txs.append({
+                        "block_index": tx[0],
+                        "from_addr": tx[1],
+                        "to_addr": tx[2],
+                        "value": tx[3],
+                        "gas": tx[4],
+                        "args": json.loads(tx[5]),
+                        "timestamp": tx[6],
+                        "tx_hash": tx[7]
+                    })
+                
+                request_data = {
+                                'type': 'MINED_TRANSACTION_RESPONSE',
+                                'transactions': tmp_txs
+                            }
+                node_conn.send(request_data, compression='bzip2')
+
+            elif data['type'] == 'MINED_TRANSACTION_RESPONSE':
+                for t_item in data['transactions']:
+                    tmp = Transaction(
+                                    t_item['from_addr'],
+                                    t_item['to_addr'],
+                                    t_item['value'],
+                                    t_item['gas'],
+                                    t_item['args'],
+                                    t_item['timestamp']
+                                )
+                    tmp.tx_hash = t_item['tx_hash']
+                    tmp.set_transaction()
+                    
+                    db.add_to_mined_tx(t_item['block_index'], tmp)
+
+            elif data['type'] == 'NON_MINED_TRANSACTION_REQUEST':
+                tmp_txs = []
+                r_data = db.get_data('transactions')
+                for tx in r_data:
+                    tmp_txs.append({
+                        "from_addr": tx[0],
+                        "to_addr": tx[1],
+                        "value": tx[2],
+                        "gas": tx[3],
+                        "args": json.loads(tx[4]),
+                        "timestamp": tx[5],
+                        "tx_hash": tx[6]
+                    })
+                
+                request_data = {
+                                'type': 'NON_MINED_TRANSACTION_RESPONSE',
+                                'transactions': tmp_txs
+                            }
+                node_conn.send(request_data, compression='bzip2')
+
+            elif data['type'] == 'NON_MINED_TRANSACTION_RESPONSE':
+                for t_item in data['transactions']:
+                    tmp = Transaction(
+                                    t_item['from_addr'],
+                                    t_item['to_addr'],
+                                    t_item['value'],
+                                    t_item['gas'],
+                                    t_item['args'],
+                                    t_item['timestamp']
+                                )
+                    tmp.tx_hash = t_item['tx_hash']
+                    tmp.set_transaction()
+
+                    self.blockchain.transactions.append(tmp)
+                    db.add_transaction(tmp)
 
         self.log("[RECEIVED MESSAGE]: Data from node %s:[%s]" % (node_conn.address, str(data)))
-
 
     def send_to_nodes(self, data, exclude=[], compression='none'):
         
@@ -350,7 +458,6 @@ class Node(threading.Thread):
             else:
                 self.send_to_node(n, data, compression)
 
-
     def send_to_node(self, n, data, compression='none'):
 
         if n in self.nodes_inbound or n in self.nodes_outbound:
@@ -360,19 +467,39 @@ class Node(threading.Thread):
         else:
             self.log(f"[UNKNOWN NODE]: Do not have connection with node {n.address}:{n.port}!!")
     
-    def extract_chain_part(self, b_index):
-        tmp_chain_part = []
-        tmp_index = None
-        for block in enumerate(self.blockchain.chain):
-            if block[1].index == b_index:
-                tmp_index = block[0]
-                break
+    def sync_chain(self):
+        try:
+            network = []
+            for n in self.nodes_inbound + self.nodes_outbound:
+                for nd in network:
+                    if n.address == nd.address and n.port == nd.port:
+                        break
+                else:
+                    network.append(n)
+                
+            if len(network) != 0:
+                for conn in network:
+                    request_data = {'type':'CHAIN_LENGTH_REQUEST'}
+                    self.send_to_node(conn, request_data)
+                
+                # Delay execution to allow all nodes to send feedback
+                time.sleep(0.3)
+                node_with_longest_chain = max(self.length_response, key=lambda x : int(x['length']))
+                
+                if len(self.blockchain.chain) < int(node_with_longest_chain['length']):
+                    request_data = {'type':'CHAIN_REQUEST'}
+                    node_with_longest_chain['node_conn'].send(request_data)
+                    return {'status': True, 'message': 'Sychronization has began...!!!\nPlease wait while all required data are being updated.'}
+                
+                else:
+                    return {'status': False, 'message': 'Chain is already up to date with the network!!'}
 
-        for block in self.blockchain.chain[tmp_index : ]:
-            tmp_chain_part.append(block.block_item)
-
-        return tmp_chain_part
-
+            else:
+                return {'status': False, 'message': 'Please make sure you are connected to at least one node!!!'}
+        
+        except Exception as e:
+            return {'status': False, 'message': 'An Error Occured While Trying to Synchronize!!!'}
+    
     def stop(self):
         self.terminate_flag.set()
 
