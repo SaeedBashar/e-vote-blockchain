@@ -15,6 +15,7 @@ from Crypto.Signature import PKCS1_v1_5
 from pathlib import Path
 import json
 import threading
+import ast
 
 from src.blockchain import keygen
 from src.blockchain_node.node_connection import Node_connection
@@ -187,26 +188,23 @@ class Node(threading.Thread):
             }
         
     def node_message(self, node_conn, data):
-
-        self.log(json.dumps(data))
+        
+        # self.log(json.dumps(data))
 
         keys_in_data = [x[1] for x in enumerate(data)]
 
         if 'type' in keys_in_data:
             if data['type'] == 'NEW_TRANSACTION_REQUEST':
                 transaction = data['transaction']
-
+                transaction['args'] = ast.literal_eval(str(n_block['args']))
                 self.blockchain.add_transaction(transaction, self.send_to_nodes, node_conn)
-                    
-            elif data['type'] == 'LATEST_BLOCK_REQUEST':
-                node_conn.send({'msg': 'success'})
             
             elif data['type'] == "NEW_BLOCK_REQUEST":
                 # "NEW_BLOCK_REQUEST" is sent when someone wants to submit a new block.
                 # Its message body must contain the new block.
 
                 n_block = data['block']
-
+                n_block['data'] = ast.literal_eval(str(n_block['data']))
                 return_data = self.blockchain.add_block(n_block)
 
                 if return_data['status']:

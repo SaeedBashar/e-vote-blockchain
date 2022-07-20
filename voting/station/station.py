@@ -41,39 +41,40 @@ get_info()
 def submit_ballot():
     x = request.get_json()
 
-    # res = verify_ballot((x['user_name'], x['user_id']))
-    
-    # if res['status'] == True:
+    res = verify_ballot((x['user_name'], x['user_id'], x['signature']))
+    print(res)
     response = requests.post('http://127.0.0.1:7000/user-vote', json={'user_id': x['user_id']})
-
-    # Construct a transaction and send to miner nodes
-    transaction = {
-        'from_addr': reg_public_key,
-        'to_addr': 'SC' + contract_addr,
-        'value': 0,
-        'gas': 0,
-        'args': [x['voted_candidates']]
-    }
-    for n in nodes:
-        response = requests.post('http://192.168.56.1:4000/transactions', json=transaction)
+    # if res['status'] == True:
+    
+    #     # Construct a transaction and send to miner nodes
+    #     transaction = {
+    #         'from_addr': reg_public_key,
+    #         'to_addr': 'SC' + contract_addr,
+    #         'value': 0,
+    #         'gas': 0,
+    #         'args': [x['voted_candidates']]
+    #     }
+    #     for n in nodes:
+    #         response = requests.post('http://192.168.56.1:4000/transactions', json=transaction)
+    #         print(response)
 
     return jsonify({'status': True})
 
 def verify_ballot(arg):
 
-    h = SHA256.new((arg[0] + arg[1]).encode())
+    h = SHA256.new((arg[0].lower() + arg[1]).encode())
     try:
         pub_key = RSA.importKey(reg_public_key.encode())
         verifier = PKCS1_v1_5.new(pub_key)
 
-        verifier.verify(h)
+        verifier.verify(h, arg[2].encode())
+        print("Verified!!")
         return {
             'status': True,
             'msg': 'Verification Success'
         }
-    except ValueError as e:
+    except (ValueError, TypeError ):
         print("Verification Failed")
-        print(e)
         return {
             'status': False,
             'msg': 'Verification Failed'
@@ -84,10 +85,6 @@ def verify_ballot(arg):
             'status': False,
             'msg': 'Unexpected Error occured!!'
         }
-
-
-def timestamp_to_string(epoch_time):
-    return datetime.datetime.fromtimestamp(epoch_time).strftime('%H:%M')
 
 
 if __name__ == '__main__':

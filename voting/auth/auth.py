@@ -126,7 +126,7 @@ def start_election():
         transaction['args'].append(ELECTION_INFO['portfolio'])
         transaction['contract_addr'] = get_election_addr(transaction['args'][0])
 
-        response = requests.post('http://192.168.56.1:4000/transactions', json=transaction)
+        response = requests.post('http://192.168.56.1:4001/transactions', json=transaction)
         print(response.json())
         return {'status': True}
     return redirect('/login')
@@ -199,7 +199,6 @@ def get_election_addr(arg):
 
         return addr
 
-
 def get_key():
     path = Path('database/data.json')
     data = json.loads(path.read_text())
@@ -210,11 +209,10 @@ def get_key():
         priv_key = key.exportKey()
         pub_key = key.publickey().exportKey()
         keys = {
-            'private_key': priv_key.hex(),
-            'public_key': pub_key.hex()
+            'private_key': priv_key.decode(),
+            'public_key': pub_key.decode()
         }
         data['keys'] = keys
-        data['supported_keys'] = {'private_key': priv_key.decode(), 'public_key': pub_key.decode()}
         path.write_text(json.dumps(data))
 
         return keys
@@ -222,19 +220,19 @@ def get_key():
 def sign_ballot(arg, hasId=False):
     path = Path('database/data.json')
     data = json.loads(path.read_text())
-
+   
     if not hasId:
-        userId = binascii.hexlify(Crypto.Random.new().read(64)).decode()
+        userId = Crypto.Random.new().read(64).hex()
         db.insert_voter_id(userId, arg)
     else:
         userId = db.get_data('voterId', arg)
         
-    priv_key = RSA.importKey(data['supported_keys']['private_key'].encode())
+    priv_key = RSA.importKey(data['keys']['private_key'].encode())
     signer = PKCS1_v1_5.new(priv_key)
-    h = SHA256.new((arg[0] + arg[1] + userId).encode())
+    h = SHA256.new((arg[0].lower() + userId).encode())
     sig = signer.sign(h)
 
-    return binascii.hexlify(sig).decode()
+    return str(sig)
 
 def verify_ballot(arg):
     path = Path('database/data.json')
@@ -243,7 +241,7 @@ def verify_ballot(arg):
     id = db.get_data('voterId', arg)
     h = SHA256.new((arg[0] + id).encode())
     try:
-        pub_key = RSA.importKey(data['keys']['public_key'].encode())
+        pub_key = RSA.importKey(data['supported_keys']['public_key'].encode())
         verifier = PKCS1_v1_5.new(pub_key)
 
         verifier.verify(h)
@@ -263,9 +261,6 @@ def verify_ballot(arg):
             'status': False,
             'msg': 'Unexpected Error occured!!'
         }
-
-def timestamp_to_string(epoch_time):
-    return datetime.datetime.fromtimestamp(epoch_time).strftime('%H:%M')
 
 app.secret_key = 'mysecret'
 

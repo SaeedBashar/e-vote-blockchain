@@ -88,7 +88,7 @@ class Database:
     @classmethod
     def add_block(self, data):
         blk_dict = data.block_item
-        blk_dict['data'] = json.dumps(blk_dict['data'])
+        # blk_dict['data'] = json.dumps(blk_dict['data'])
         try:
             with sqlite3.connect(db_path) as conn:
                 query = "INSERT INTO Chain VALUES(?, ?, ?, ?, ?, ?, ?, ?)"

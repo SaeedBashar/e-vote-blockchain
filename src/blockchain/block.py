@@ -38,7 +38,7 @@ class Block:
         self.block_item = {
             "index": self.index,
             "timestamp": str(self.timestamp),
-            "data": tmp_tx,
+            "data": json.dumps(tmp_tx),
             "difficulty": self.difficulty,
             "merkle_root": self.merkle_root,
             "prev_hash": self.prev_hash,

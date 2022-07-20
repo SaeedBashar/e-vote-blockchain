@@ -1,5 +1,5 @@
 from flask import Flask, session
-from flask import render_template, redirect, request, jsonify
+from flask import render_template, redirect, request, jsonify, g
 from math import *
 
 # from utils import get_ip
@@ -14,6 +14,19 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 
 app = Flask(__name__)
 
+hasVoted = False
+
+@app.route('/')
+def home():
+    if session['isLoggedIn']:
+        
+        if not hasVoted:
+            return redirect('/index')
+            
+        return redirect('/voted')
+    
+    return redirect('/login')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
@@ -21,7 +34,7 @@ def login():
     else:
         uname = request.form.get('username')
         pword = request.form.get('password')
-
+        
         response = requests.post('http://127.0.0.1:7000/auth', json={'username': uname, 'password': pword})
         data = response.json()
         if data['status'] == True:
@@ -32,20 +45,25 @@ def login():
                 session['uid'] = data['user_id']
                 session['isLoggedIn'] = True
                 session['uname'] = uname
+
+                global hasVoted
+                g.hasVoted = True
                 
                 return redirect('/index')
             else:
-                return render_template('done-voting.html')
-        return {'status': False}
-
+                return redirect('/voted')
+        return {'status': False, 'message': 'You are not eligible to vote'}
 
 @app.route('/index')
 def index():
-    data = {
-        'info': session['ELECTION_INFO']
-    }
-    return render_template('index.html', data=data)
-
+    if session['isLoggedIn']:
+        if not hasVoted:
+            data = {
+                'info': session['ELECTION_INFO']
+            }
+            return render_template('index.html', data=data)
+        return redirect('/voted')
+    return redirect('/login')
 
 @app.route('/submit-ballot', methods=['POST'])
 def submit_ballot():
@@ -60,15 +78,23 @@ def submit_ballot():
 
     return {'status': True}
 
+@app.route('/voted')
+def done_voting():
+    return render_template('done-voting.html')
+
+@app.route('/leave')
+def leave():
+    if session.get('isLoggedIn', None) != None:
+        session.pop('isLoggedIn', None)
+        return jsonify({'status': True})
+    return jsonify({'status': False})
+    
 def completeBallot(arg):
     arg['signature'] = session['SIGNATURE']
     arg['user_id'] = session['uid']
     arg['user_name'] = session['uname']
 
     return arg
-
-def timestamp_to_string(epoch_time):
-    return datetime.datetime.fromtimestamp(epoch_time).strftime('%H:%M')
 
 app.secret_key = 'mysecret'
 

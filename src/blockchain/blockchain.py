@@ -55,7 +55,7 @@ class Blockchain:
         self.miner_thread = None
 
         self.block_time = 30000
-        self.reward = 297
+        self.reward = 50
 
         # get and initiliaze block objects if some exist in the database
         return_data = db.get_data('blocks')
@@ -137,7 +137,7 @@ class Blockchain:
         
         tmp_txs = []
         for t_item in n_block['data']:
-            tmp_txs.append(Transaction(
+            tmp = Transaction(
                                         t_item['from_addr'],
                                         t_item['to_addr'],
                                         t_item['value'],
@@ -145,7 +145,10 @@ class Blockchain:
                                         t_item['args'],
                                         t_item['timestamp']
                                     )
-                        )
+            tmp.tx_hash = t_item['tx_hash']
+            tmp.set_transaction()
+
+            tmp_txs.append(tmp)
 
         tmp_block = Block(
                             n_block['index'],
@@ -158,6 +161,7 @@ class Blockchain:
         tmp_block.hash = n_block['hash']
         tmp_block.nonce = n_block['nonce']
         tmp_block.merkle_root = n_block['merkle_root']
+        tmp_block.set_block()
 
         self.chain.append(tmp_block)
 
@@ -218,6 +222,8 @@ class Blockchain:
                                             trans['args'],
                                             trans['timestamp']
                                         )
+                            
+                            tmp_tx.set_transaction()
 
                             self.transactions.append(tmp_tx)
                             db.add_transaction(tmp_tx)
@@ -254,6 +260,8 @@ class Blockchain:
                                             trans['args'],
                                             trans['timestamp']
                                         )
+                
+                tmp_tx.set_transaction()
 
                 self.transactions.append(tmp_tx)
                 db.add_transaction(tmp_tx)
@@ -287,6 +295,8 @@ class Blockchain:
                                         trans['args'],
                                         trans['timestamp']
                                     )
+            
+            tmp_tx.set_transaction()
 
             self.transactions.append(tmp_tx)
             db.add_transaction(tmp_tx)
@@ -335,6 +345,8 @@ class Blockchain:
                                         trans['args'],
                                         trans['timestamp']
                                     )
+            
+            tmp_tx.set_transaction()
 
             self.transactions.append(tmp_tx)
             db.add_transaction(tmp_tx)
@@ -347,6 +359,7 @@ class Blockchain:
 
             send_nodes(data, exclude_list)
             return {'status': True, 'message': 'done'}
+        
         else:
             print('Invalid Transaction')
             return {
@@ -358,7 +371,16 @@ class Blockchain:
         tmp_tx = []
         max_limit = 5
         counter = 0
+        
+        tmp_txs = db.get_data('transactions')
+        txs = []
+        for x in tmp_txs:
+            tmp = Transaction(x[0], x[1], x[2], x[3], x[4], x[5])
+            tmp.set_transaction()
 
+            txs.append(tmp)
+
+        self.transactions = txs
         while counter < max_limit and len(self.transactions) != 0 : 
             tmp = self.transactions[0]
             tmp_i = 0
