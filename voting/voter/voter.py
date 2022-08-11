@@ -18,7 +18,7 @@ hasVoted = False
 
 @app.route('/')
 def home():
-    if session['isLoggedIn']:
+    if session.get('isLoggedIn', None) != None:
         
         if not hasVoted:
             return redirect('/index')
@@ -56,7 +56,7 @@ def login():
 
 @app.route('/index')
 def index():
-    if session['isLoggedIn']:
+    if session.get('isLoggedIn', None) != None:
         if not hasVoted:
             data = {
                 'info': session['ELECTION_INFO']
