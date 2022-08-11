@@ -16,8 +16,9 @@ def mine(chain):
         block.set_block()
 
         # Remove txs from non mined to mined txs
+        chain_len = len(chain.chain)
         for t in tmp_txs:
-            db.add_to_mined_tx(len(chain.chain), t)
+            db.add_to_mined_tx(chain_len, t)
             chain.transactions = list(filter(lambda tx: tx not in tmp_txs, chain.transactions))
 
         return block

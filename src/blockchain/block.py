@@ -2,6 +2,8 @@ import binascii
 import hashlib
 from pathlib import Path
 import json
+from time import time
+
 
 import Crypto
 import Crypto.Random
@@ -62,13 +64,9 @@ class Block:
 
     def get_hash(self):
         str_val = str(self.index) + str(self.timestamp) + json.dumps(self.block_item['data']) + str(self.difficulty) + self.prev_hash + str(self.nonce) + self.merkle_root
-        # str_val = str(self.timestamp) + str(self.transactions) + str(self.prev_hash) + str(self.nonce)
+        
         return hashlib.sha256(str_val.encode()).hexdigest()
 
-    # def get_hash(self):
-    #     str_val : str = str(self.index) + str(self.timestamp) + str(self.data) + str(self.difficulty) + self.prev_hash + str(self.nonce) + self.merkle_tree
-    #     return SHA256.new(str_val.encode('utf8'))
-    
     def mine_block(self, dif):
         dif_str = "".join(["0" for x in range(dif)])
         while self.hash[:dif] != dif_str:
@@ -77,10 +75,24 @@ class Block:
         self.set_block()
 
     @classmethod
-    def has_valid_transactions(self, block, state):
+    def is_valid(self, block, last_block):
 
-        # for tx in block.data:
-        #     if Transaction.is_valid(tx) == False:
-        #         return False
-            
+        str_val = block['index'] + block['timestamp'] + json.dumps(block['data']) + block['difficulty'] + block['prev_hash'] + block['nonce'] + block['merkle_root']
+        if hashlib.sha256(str_val.encode()).hexdigest() !=  block['hash']:
+            return False
+
+        if float( block['timestamp']) > time() :
+            return False
+
+        if block['prev_hash'] != last_block['hash']:
+            return False
+
+        if int(block['index']) - 1 != int(last_block['index']):
+            return False
+
+        for tx in block['data']:
+            if Transaction.is_valid(tx) == False:
+                return False
+
+        
         return True

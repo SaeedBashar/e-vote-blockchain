@@ -1,0 +1,15 @@
+{
+    "election_info": {
+        "id": 1234,
+        "portfolio": ["president", "secretary"],
+        "candidates": [
+            {"id":0 ,"name": "Candidate One", "desc": "Vote for Peace", "age": 93, "portfolio": "president"},
+            {"id":1 ,"name": "Candidate Two", "desc": "Vote for Progress", "age": 87, "portfolio": "president"},
+            {"id":2 ,"name": "Candidate Three", "desc": "Vote for Progress", "age": 66, "portfolio": "secretary"},
+            {"id":3 ,"name": "Candidate Four", "desc": "Vote for Progress", "age": 34, "portfolio": "secretary"}
+        ],
+        "result": null
+    },
+    "election_authorities": ["127.0.0.1:6000"],
+    "miner_nodes": ["127.0.0.1:4000"]
+}

@@ -4,7 +4,7 @@ from flask import Flask, session
 from flask import render_template, redirect, request, jsonify
 from math import *
 
-import datetime, time
+from datetime import datetime as dt
 import json
 import codecs
 import requests
@@ -18,22 +18,31 @@ from Crypto.Signature import PKCS1_v1_5
 
 from database import database as db
 
-ELECTION_INFO = {
-    'id': 1234,
-    'portfolio': ['president', 'secretary'],
-    'candidates': [
-        {'id':0 ,'name': 'Benjamin Kudjoe', 'desc': 'Vote for Peace', 'age': 93, 'portfolio': 'president'},
-        {'id':1 ,'name': 'Kelvin Nana', 'desc': 'Vote for Progress', 'age': 87, 'portfolio': 'president'},
-        {'id':2 ,'name': 'Kim Lee', 'desc': 'Vote for Progress', 'age': 66, 'portfolio': 'secretary'},
-        {'id':3 ,'name': 'Ben Toe', 'desc': 'Vote for Progress', 'age': 34, 'portfolio': 'secretary'},
-    ]
-}
 
-election_authorities = {'127.0.0.1:6000'}
-# election_authorities = ('127.0.0.1:6000', '127.0.0.1:6001')
-miner_nodes = ['127.0.0.1:4000']
+# Get and set some initial values for Election Authority
+# =====================================================
+path = Path('database/election_data.json')
+data = json.loads(path.read_text())
+
+ELECTION_INFO = data['election_info']
+election_authorities = set(data['election_authorities'])
+miner_nodes = data['miner_nodes']
+# =====================================================
+
 
 app = Flask(__name__)
+
+@app.context_processor
+def cxt_proc():
+    def toUpper(el):
+        return str(el).upper()
+    
+    def percent(el):
+        
+                
+        return str((el/ELECTION_INFO['result']['total_votes']) * int(100))
+    
+    return {'upper': toUpper, 'percent': percent}
 
 @app.route('/')
 def index():
@@ -56,7 +65,6 @@ def login():
             return redirect('/home')
 
         return redirect('/login')
-
 
 @app.route('/home')
 def home():
@@ -110,7 +118,7 @@ def start_election():
     if 'name' in session:
         print('starting election...')
         transaction = {}
-        transaction['from_addr'] = get_key()['public_key']
+        transaction['from_addr'] = format_key_for_api(get_key()['public_key'])
         transaction['to_addr'] = None
         transaction['value'] = 0
         transaction['gas'] = 0
@@ -122,14 +130,99 @@ def start_election():
         with codecs.open(file_path,encoding='utf8',mode='r') as inp:
             transaction['args'].append(inp.read())
             # exec(transaction['args'][0], {'__builtins__': __builtins__}, {'name': 'Ben'})
-            
-        transaction['args'].append(ELECTION_INFO['portfolio'])
+        
+        d1 = dt.now()
+        d2 = dt(d1.year, d1.month, d1.day, d1.hour, d1.minute + 3, d1.second, d1.microsecond)
+
+        t1 = dt.timestamp(d1)
+        t2 = dt.timestamp(d2)
+
+        contract_params = {
+            'start_time': t1,
+            'end_time': t2
+        }
+        transaction['args'].append(contract_params)
         transaction['contract_addr'] = get_election_addr(transaction['args'][0])
 
-        response = requests.post('http://192.168.56.1:4001/transactions', json=transaction)
+        # Signing the transaction using the contract the address
+        # ===================================================
+        path = Path('database/data.json')
+        data = json.loads(path.read_text())
+
+        priv_key = RSA.importKey(data['keys']['private_key'].encode())
+        signer = PKCS1_v1_5.new(priv_key)
+        h = SHA256.new((transaction['contract_addr']).encode())
+        sig = signer.sign(h)
+        transaction['signature'] = str(sig)
+        # ===================================================
+
+        response = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
         print(response.json())
-        return {'status': True}
+        return response.json()
     return redirect('/login')
+
+@app.route('/check-results')
+def check_results():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
+    with codecs.open(file_path,encoding='utf8',mode='r') as inp:
+        data = inp.read()
+
+    data = {
+        'contract_addr': get_election_addr(data)
+    }
+    
+    response = requests.post('http://127.0.0.1:4000/get-contract-result', json=data)
+    response = response.json()
+    if response['status'] == True:
+        print(response)
+        ELECTION_INFO['result'] = response['contract_result']
+        
+        
+        c_names  = []
+    
+        for x in ELECTION_INFO['candidates']:
+            c_names.append({
+                'id': x['id'],
+                'name': x['name']
+            })
+            
+        tmp = {}
+        cands = ELECTION_INFO['result']['candidates']
+        for i in cands:
+            tmp[i] = []
+            for j in cands[i]:
+                for k in c_names:
+                    if int(j) == int(k['id']):
+                        tmp[i].append({
+                            'id': k['id'],
+                            'vote_count': cands[i][j],
+                            'name' : k['name']
+                        })
+        
+        data = {
+            'portfolio': ELECTION_INFO['portfolio'],
+            'cands': tmp
+        }
+        return render_template('check-results.html', data=data)
+    else:
+        return jsonify(response)
+
+@app.route('/get-result')
+def get_result():
+    tmp  = []
+    
+    for x in ELECTION_INFO['candidates']:
+        tmp.append({
+            'id': x['id'],
+            'name': x['name']
+        })
+        
+    return jsonify({
+        'cand_names': tmp,
+        'result': ELECTION_INFO['result'],
+        'portfolio': ELECTION_INFO['portfolio']
+    })
 
 @app.route('/logout')
 def logout():
@@ -261,6 +354,17 @@ def verify_ballot(arg):
             'status': False,
             'msg': 'Unexpected Error occured!!'
         }
+
+def format_key_for_api(key, type='pub'):
+    if key != None:
+        if type == 'pub':
+            key = key[27 : len(key) - 25]
+            return binascii.hexlify(key.encode()).decode().upper()
+        else:
+            key = key[32 : len(key) - 30]
+            return binascii.hexlify(key.encode()).decode().upper()
+    else:
+        return key
 
 app.secret_key = 'mysecret'
 

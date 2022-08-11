@@ -17,7 +17,7 @@ import json
 import threading
 import ast
 
-from src.blockchain import keygen
+from src.wallet.wallet import Wallet as wlt
 from src.blockchain_node.node_connection import Node_connection
 from src.blockchain.blockchain import Blockchain
 from src.blockchain.block import Block
@@ -80,7 +80,7 @@ class Node(threading.Thread):
             return 'No connected node'
 
     def gen_key_pair(self):
-        keys = keygen.gen_key_pair()
+        keys = wlt.generate_key()
         self.private_key = keys['private_key']
         self.public_key = keys['public_key']
 
@@ -116,6 +116,7 @@ class Node(threading.Thread):
                 return {"status": True, "msg": "Miner is already running..."}
             
             else:
+                
                 mined_block = self.blockchain.start_miner(self.public_key, self.send_to_nodes)
                 
                 if mined_block != None:
@@ -270,36 +271,8 @@ class Node(threading.Thread):
                             cur_block = self.temporary_chain[i]
                             pre_block = self.temporary_chain[i-1]
 
-                            # if SHA256.new(cur_block.index + 
-                            # cur_block.timestamp + 
-                            # json.dumps(cur_block.block_item['data']) +
-                            # cur_block.difficulty+
-                            # pre_block.hash + 
-                            # cur_block.nonce + 
-                            # cur_block.merkle_root
-                            # ) != cur_block.hash:
-                            #     self.log("Failed first test")
-                            #     is_chain_valid = False
-
-                            state = db.get_state()
-                            if not Block.has_valid_transactions(cur_block, state):
-                                self.log("Failed second test")
-                                is_chain_valid = False
-
-                            if float(cur_block.timestamp) > time() or float(cur_block.timetamp) < float(pre_block.timestamp):
-                                self.log("Failed third test")
-                                is_chain_valid = False
-
-                            if cur_block.prev_hash != pre_block.hash:
-                                self.log("Failed forth test")
-                                is_chain_valid = False
-
-                            if int(cur_block.index) - 1 != int(pre_block.index):
-                                self.log("Failed fifth test")
-                                is_chain_valid = False
-
-                            if cur_block.difficulty != dif:
-                                self.log("Failed sixth test")
+                         
+                            if not Block.is_valid(cur_block.block_item, pre_block.block_item):
                                 is_chain_valid = False
 
 
@@ -356,7 +329,7 @@ class Node(threading.Thread):
 
                 response_data = {
                         'type': 'STATE_RESPONSE',
-                        'state': db.get_state()
+                        'state': db.get_data('states')
                     }
                 node_conn.send(response_data, compression='bzip2')
 

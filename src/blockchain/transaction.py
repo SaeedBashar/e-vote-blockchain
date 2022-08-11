@@ -30,14 +30,6 @@ class Transaction:
         str_val = str(self.from_addr) + str(self.to_addr) + str(self.value) + str(self.gas) + json.dumps(self.args) + str(self.timestamp)
         return hashlib.sha256(str_val.encode()).hexdigest()
 
-    def sign(self, keyPair):
-
-        if(keygen.hex_key(keyPair.publickey().exportKey(format='DER')) == self.from_addr):
-            private_key = RSA.importKey(keygen.unhex_key(private_key))
-            signer = PKCS1_v1_5.new(private_key)
-            h = self.hash()
-            sig = signer.sign(h)
-            return keygen.hex_key(sig)
     
     def hash(self):
         str_val : str = self.from_addr + self.to_addr + str(self.value) + str(self.gas) + str(self.args) + str(self.timestamp)
@@ -74,21 +66,10 @@ class Transaction:
 
     @classmethod
     def is_valid(self, tx):
-        # if tx['from_addr'] == "" or tx['to_addr'] == "":
-        #     print('failed first')
-        #     return False
-
-        if int(tx['value']) < 0:
-            print('failed second')
+       
+        if int(tx['value']) < 0 or int(tx['gas']) < 0:
+    
             return False
-
-        if int(tx['gas']) < 0:
-            print('failed thir')
-            return False
-
-        # if (state[tx['from_addr']]['balance'] if state[tx['from_addr']] != None else 0) < int(tx['value']) + int(tx['gas']):
-        #     print('failed forth')
-        #     return False
     
         return True
 

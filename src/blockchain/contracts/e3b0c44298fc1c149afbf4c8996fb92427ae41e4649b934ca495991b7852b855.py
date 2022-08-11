@@ -25,7 +25,7 @@ def contract(action='init', args=[], state={}):
                     }
                 }
 
-                election_stop_timer(60)
+        election_stop_timer(60)
 
     def election_vote():
         nonlocal election_in_progress

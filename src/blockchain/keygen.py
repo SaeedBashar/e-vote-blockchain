@@ -15,6 +15,8 @@ def gen_key_pair():
     private_key = key.exportKey(format='DER')
     public_key = key.publickey().exportKey(format='DER')
     
+    print(binascii.hexlify(private_key))
+    print(binascii.hexlify(public_key))
     result = {
         'private_key': (private_key.hex()),
         'public_key': (public_key.hex())
@@ -28,4 +30,3 @@ def hex_key(key):
 
 def unhex_key(key):
     return binascii.unhexlify(key)
-

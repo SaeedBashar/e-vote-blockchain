@@ -1,8 +1,11 @@
+import binascii
 from pathlib import Path
 import re
 from flask import Flask
 from flask import render_template, redirect, request, jsonify
 from math import *
+from datetime import datetime as dt
+
 
 # from utils import get_ip
 
@@ -42,23 +45,33 @@ def submit_ballot():
     x = request.get_json()
 
     res = verify_ballot((x['user_name'], x['user_id'], x['signature']))
-    print(res)
-    response = requests.post('http://127.0.0.1:7000/user-vote', json={'user_id': x['user_id']})
-    # if res['status'] == True:
+   
+    if res['status'] == True:
+        
+        response = requests.post('http://127.0.0.1:7000/user-vote', json={'user_id': x['user_id']})
     
-    #     # Construct a transaction and send to miner nodes
-    #     transaction = {
-    #         'from_addr': reg_public_key,
-    #         'to_addr': 'SC' + contract_addr,
-    #         'value': 0,
-    #         'gas': 0,
-    #         'args': [x['voted_candidates']]
-    #     }
-    #     for n in nodes:
-    #         response = requests.post('http://192.168.56.1:4000/transactions', json=transaction)
-    #         print(response)
+        # Construct a transaction and send to miner nodes
+        transaction = {
+            'from_addr': format_key_for_api(reg_public_key),
+            'to_addr': 'SC' + contract_addr,
+            'value': 0,
+            'gas': 0,
+            'args': [x['voted_candidates']]
+        }
+        time_voted = dt.timestamp(dt.now())
+        transaction['args'].append(time_voted)
+        
+        transaction['signature_data'] = {
+            'user_name': x['user_name'],
+            'user_id': x['user_id'],
+            'signature': x['signature']
+        }
 
-    return jsonify({'status': True})
+        # for n in nodes:
+        res = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
+        print(res.json())   
+
+    return jsonify(res.json())
 
 def verify_ballot(arg):
 
@@ -86,6 +99,16 @@ def verify_ballot(arg):
             'msg': 'Unexpected Error occured!!'
         }
 
+def format_key_for_api(key, type='pub'):
+    if key != None:
+        if type == 'pub':
+            key = key[27 : len(key) - 25]
+            return binascii.hexlify(key.encode()).decode().upper()
+        else:
+            key = key[32 : len(key) - 30]
+            return binascii.hexlify(key.encode()).decode().upper()
+    else:
+        return key
 
 if __name__ == '__main__':
     from argparse import ArgumentParser

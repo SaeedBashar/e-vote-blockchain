@@ -40,11 +40,27 @@ class Database:
                 cursor = conn.execute(query)
                 return cursor.fetchall()
         elif arg == 'contracts':
-            query = "SELECT * FROM state"
+            query = "SELECT * FROM Contracts"
 
             with sqlite3.connect(db_path) as conn:
                 cursor = conn.execute(query)
                 return cursor.fetchall()
+
+        elif arg == 'states':
+            query = 'SELECT * FROM state'
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                tmp = {}
+                for s in cursor:
+                    tmp[s[0]] = {
+                        'balance': s[1],
+                        'body': s[2],
+                        'timestamps': json.loads(s[3]),
+                        'storage': json.loads(s[4])
+                    }
+
+                return tmp
 
     @classmethod
     def get_user(self, data):
@@ -229,21 +245,13 @@ class Database:
         return True
 
     @classmethod
-    def get_state(self):
-        query = 'SELECT * FROM state'
+    def get_state(self, arg):
+        query = 'SELECT * FROM state where public_key = ?'
 
         with sqlite3.connect(db_path) as conn:
-            cursor = conn.execute(query)
-            tmp = {}
-            for s in cursor:
-                tmp[s[0]] = {
-                    'balance': s[1],
-                    'body': s[2],
-                    'timestamps': json.loads(s[3]),
-                    'storage': json.loads(s[4])
-                }
+            cursor = conn.execute(query, (arg, ))
 
-            return tmp
+            return cursor.fetchall()
 
     @classmethod
     def add_to_state(self, addr):
@@ -268,14 +276,23 @@ class Database:
             conn.commit()
             return True
 
-    def calli(self):
+    @classmethod
+    def add_contract_info(self, arg):
         with sqlite3.connect(db_path) as conn:
-            query = "select * from Movies"
-            cursor = conn.execute(query)
+            # Check for existence of a contract before inserting
+            query = "SELECT * FROM Contracts where c_address = ?"
+            cursor = conn.execute(query, (arg[0],))
+            if len(cursor.fetchall()) != 0:
+                    return True
+
+            query = "INSERT INTO Contracts VALUES(?, ?, ?)"
+            conn.execute(query, arg)
+            conn.commit()
+            return True
+
+    @classmethod
+    def get_contract_info(self, arg):
+        with sqlite3.connect(db_path) as conn:
+            query = "SELECT * FROM Contracts where c_address = ?"
+            cursor = conn.execute(query, (arg,))
             return cursor.fetchall()
-            # for c in cursor:
-            #     print(c)
-            # query = "INSERT INTO Movies VALUES(?, ?, ?)"
-            # for m in movies:
-            #     conn.execute(query, tuple(m.values()))
-            # conn.commit()
