@@ -132,7 +132,7 @@ def start_election():
             # exec(transaction['args'][0], {'__builtins__': __builtins__}, {'name': 'Ben'})
         
         d1 = dt.now()
-        d2 = dt(d1.year, d1.month, d1.day, d1.hour, d1.minute + 3, d1.second, d1.microsecond)
+        d2 = dt(d1.year, d1.month, d1.day, d1.hour, d1.minute + 5, d1.second, d1.microsecond)
 
         t1 = dt.timestamp(d1)
         t2 = dt.timestamp(d2)

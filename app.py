@@ -350,7 +350,7 @@ def transactions():
                             data['to_addr'], 
                             data['value'], 
                             data['gas'], 
-                            data['args']
+                            str(data['args'])
                         ]
                     )
 

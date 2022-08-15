@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import ast
 import sys
 import threading
 from threading import Thread
@@ -102,14 +103,24 @@ class Blockchain:
         mined_block = self.miner_thread.join()
 
         if mined_block != None:
-            mining_reward_tx = Transaction(None, addr, self.reward, 0, [], time())
-            self.add_transaction(mining_reward_tx.tx_item, send_nodes)
+            mining_reward_tx = {
+                'from_addr': None,
+                'to_addr': addr,
+                'value': self.reward,
+                'gas': 0,
+                'args': [],
+                'timestamp': time()
+            }
+            self.add_transaction(mining_reward_tx, send_nodes)
         
         return mined_block
 
     def add_block(self, n_block):
 
         if n_block['prev_hash'] != self.chain[-1].prev_hash:
+            
+            for tx in n_block['data']:
+                tx['args'] = ast.literal_eval(tx['args'])
             
             is_valid_block = Block.is_valid(n_block, self.chain[-1].block_item)
             
@@ -155,7 +166,8 @@ class Blockchain:
                 # store the block in the database
                 db.add_block(tmp_block)
 
-                self.miner_thread.stop()
+                if self.miner_thread != None:
+                    self.miner_thread.stop()
 
                 # Remove txs from non mined to mined txs
                 for t in tmp_txs:
@@ -172,11 +184,11 @@ class Blockchain:
             if trans['from_addr'] != None: # if funds being transferred to another account
 
                 res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], [
-                    data['from_addr'], 
-                    data['to_addr'], 
-                    data['value'], 
-                    data['gas'], 
-                    data['args']
+                    trans['from_addr'], 
+                    trans['to_addr'], 
+                    trans['value'], 
+                    trans['gas'], 
+                    str(trans['args'])
                 ])
 
                 if res['status'] == True:
@@ -223,7 +235,10 @@ class Blockchain:
                                 self.transactions.append(tmp_tx)
                                 db.add_transaction(tmp_tx)
                                 db.update_state_obj(balance, tmp_tx)
-                                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": tmp_tx.tx_item}
+
+                                transaction = tmp_tx.tx_item
+                                transaction['signature'] = trans['signature']
+                                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": transaction}
                                 
                                 exclude_list = [trans['from_addr']]
 
@@ -405,23 +420,30 @@ class Blockchain:
         max_limit = 5
         counter = 0
         
-        # tmp_txs = db.get_data('transactions')
-        # txs = []
-        # for x in tmp_txs:
-        #     tmp = Transaction(x[0], x[1], x[2], x[3], x[4], x[5])
-        #     tmp.set_transaction()
+        tmp_txs = db.get_data('transactions')
+        txs = []
+        for x in tmp_txs:
 
-        #     txs.append(tmp)
+            x = list(x)
+            x[4] = ast.literal_eval(x[4])
+            x[5] = float(x[5])
 
-        # self.transactions = txs
+            tmp = Transaction(x[0], x[1], x[2], x[3], x[4], x[5])
+            tmp.tx_hash = x[6]
+            tmp.set_transaction()
+
+            txs.append(tmp)
+
+        self.transactions = txs
+        
         while counter < max_limit and len(self.transactions) != 0 : 
             tmp = self.transactions[0]
             tmp_i = 0
 
             for i, t in enumerate(self.transactions):
-                if t.gas > tmp.gas:
+                if int(t.gas) > int(tmp.gas):
                     tmp_i = i
-                elif t.gas == tmp.gas:
+                elif int(t.gas) == int(tmp.gas):
                     if t.timestamp < tmp.timestamp:
                         tmp_i = i
 

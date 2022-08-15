@@ -123,6 +123,10 @@ class Node(threading.Thread):
                     self.blockchain.chain.append(mined_block)
                     db.add_block(mined_block)
 
+                    if len(self.blockchain.chain) % 10 == 0:
+                        self.blockchain.difficulty = self.blockchain.difficulty + 1
+                
+
                     data = {'type': 'NEW_BLOCK_REQUEST', 'block': mined_block.block_item}
                     self.send_to_nodes(data, [])
 
@@ -197,7 +201,7 @@ class Node(threading.Thread):
         if 'type' in keys_in_data:
             if data['type'] == 'NEW_TRANSACTION_REQUEST':
                 transaction = data['transaction']
-                transaction['args'] = ast.literal_eval(str(n_block['args']))
+                transaction['args'] = ast.literal_eval(str(transaction['args']))
                 self.blockchain.add_transaction(transaction, self.send_to_nodes, node_conn)
             
             elif data['type'] == "NEW_BLOCK_REQUEST":
@@ -205,7 +209,8 @@ class Node(threading.Thread):
                 # Its message body must contain the new block.
 
                 n_block = data['block']
-                n_block['data'] = ast.literal_eval(str(n_block['data']))
+                # n_block['data'] = ast.literal_eval(str(n_block['data']))
+                n_block['data'] = json.loads(str(n_block['data']))
                 return_data = self.blockchain.add_block(n_block)
 
                 if return_data['status']:
