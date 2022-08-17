@@ -291,7 +291,7 @@ class Blockchain:
         
         elif trans['to_addr'] == None:
 
-            res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], [trans['contract_addr']])
+            res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], trans['sign_data'])
 
             if res['status'] == True:
                 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -354,9 +354,9 @@ class Blockchain:
         elif trans['to_addr'][:2] == 'SC':
 
             res = Wallet.verify_transaction(
-                trans['signature_data']['signature'],
+                trans['signature'],
                 trans['from_addr'], 
-                [trans['signature_data']['user_name'], trans['signature_data']['user_id']]
+                trans['sign_data']
                 )
 
             if res['status'] == True:

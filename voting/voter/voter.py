@@ -1,3 +1,4 @@
+from urllib import response
 from flask import Flask, session
 from flask import render_template, redirect, request, jsonify, g
 from math import *
@@ -15,6 +16,18 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 app = Flask(__name__)
 
 hasVoted = False
+result_data = None
+
+@app.context_processor
+def cxt_proc():
+    def toUpper(el):
+        return str(el).upper()
+    
+    def percent(el):
+          
+        return str((el/1) * int(100))
+    
+    return {'upper': toUpper, 'percent': percent}
 
 @app.route('/')
 def home():
@@ -74,7 +87,7 @@ def submit_ballot():
     ballot_paper = completeBallot(ballot_paper)
 
     for ea in session['ELECTION_AUTH']:
-        response = requests.post("http://" + ea + "/submit-ballot",json=ballot_paper)
+        response = requests.post("http://" + ea + "/submit-transaction",json=ballot_paper)
 
     return {'status': True}
 
@@ -89,6 +102,31 @@ def leave():
         return jsonify({'status': True})
     return jsonify({'status': False})
     
+@app.route('/get-result')
+def get_results():
+    
+    response = requests.get('http://127.0.0.1:7000/get-result-for-user')
+    response = response.json()
+
+    if response['status'] == True:
+        global result_data
+        result_data = response['data']['populate_data']
+
+        data = {
+            'portfolio': response['data']['populate_data']['portfolio'],
+            'cands': response['data']['view_data']
+        }
+        print(data)
+        return render_template('/check-results.html', data=data)
+    else:
+        return jsonify(response)
+
+@app.route('/get-result-data')
+def get_result_data():
+
+    return jsonify(result_data)
+
+
 def completeBallot(arg):
     arg['signature'] = session['SIGNATURE']
     arg['user_id'] = session['uid']

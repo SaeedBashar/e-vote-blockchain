@@ -1,5 +1,6 @@
 import binascii
 from pathlib import Path
+from unittest import result
 from flask import Flask, session
 from flask import render_template, redirect, request, jsonify
 from math import *
@@ -154,6 +155,7 @@ def start_election():
         h = SHA256.new((transaction['contract_addr']).encode())
         sig = signer.sign(h)
         transaction['signature'] = str(sig)
+        transaction['sign_data'] = [transaction['contract_addr']]
         # ===================================================
 
         response = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
@@ -177,37 +179,42 @@ def check_results():
     if response['status'] == True:
         print(response)
         ELECTION_INFO['result'] = response['contract_result']
-        
-        
-        c_names  = []
-    
-        for x in ELECTION_INFO['candidates']:
-            c_names.append({
-                'id': x['id'],
-                'name': x['name']
-            })
-            
-        tmp = {}
-        cands = ELECTION_INFO['result']['candidates']
-        for i in cands:
-            tmp[i] = []
-            for j in cands[i]:
-                for k in c_names:
-                    if int(j) == int(k['id']):
-                        tmp[i].append({
-                            'id': k['id'],
-                            'vote_count': cands[i][j],
-                            'name' : k['name']
-                        })
-        
+
+
+        ret_data = construct_data_for_display()
+
         data = {
             'portfolio': ELECTION_INFO['portfolio'],
-            'cands': tmp
+            'cands': ret_data['result_data']
         }
         return render_template('check-results.html', data=data)
     else:
         return jsonify(response)
 
+def construct_data_for_display():
+    c_names  = []
+    
+    for x in ELECTION_INFO['candidates']:
+        c_names.append({
+            'id': x['id'],
+            'name': x['name']
+        })
+        
+    tmp = {}
+    cands = ELECTION_INFO['result']['candidates']
+    for i in cands:
+        tmp[i] = []
+        for j in cands[i]:
+            for k in c_names:
+                if int(j) == int(k['id']):
+                    tmp[i].append({
+                        'id': k['id'],
+                        'vote_count': cands[i][j],
+                        'name' : k['name']
+                    })
+
+    return {'result_data': tmp, 'c_names': c_names}
+        
 @app.route('/get-result')
 def get_result():
     tmp  = []
@@ -223,6 +230,25 @@ def get_result():
         'result': ELECTION_INFO['result'],
         'portfolio': ELECTION_INFO['portfolio']
     })
+
+@app.route('/get-result-for-user')
+def get_result_for_user():
+
+    if ELECTION_INFO['result'] != None:
+        data = {}
+
+        data['view_data'] = construct_data_for_display()['result_data']
+
+        data['populate_data'] = {
+            'cand_names': construct_data_for_display()['c_names'],
+            'result': ELECTION_INFO['result'],
+            'portfolio': ELECTION_INFO['portfolio']
+        }
+
+        return jsonify({'status': True, 'data' : data})
+
+    else:
+        return jsonify({'status': False, 'message': 'Election Result Not Ready Yet!!'})
 
 @app.route('/logout')
 def logout():
@@ -248,7 +274,7 @@ def get_info():
 
     return jsonify(data)
 
-@app.route('/user-vote', methods=['POST'])
+@app.route('/user-transaction', methods=['POST'])
 def user_vote():
     data = request.get_json()
     

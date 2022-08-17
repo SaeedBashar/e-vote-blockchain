@@ -40,15 +40,15 @@ def get_info():
 
 get_info()
 
-@app.route('/submit-ballot', methods=['POST'])
-def submit_ballot():
+@app.route('/submit-transaction', methods=['POST'])
+def submit_transaction():
     x = request.get_json()
 
-    res = verify_ballot((x['user_name'], x['user_id'], x['signature']))
+    res = verify_transaction((x['user_name'], x['user_id'], x['signature']))
    
     if res['status'] == True:
         
-        response = requests.post('http://127.0.0.1:7000/user-vote', json={'user_id': x['user_id']})
+        response = requests.post('http://127.0.0.1:7000/user-transaction', json={'user_id': x['user_id']})
     
         # Construct a transaction and send to miner nodes
         transaction = {
@@ -61,11 +61,12 @@ def submit_ballot():
         time_voted = dt.timestamp(dt.now())
         transaction['args'].append(time_voted)
         
-        transaction['signature_data'] = {
-            'user_name': x['user_name'],
-            'user_id': x['user_id'],
-            'signature': x['signature']
-        }
+        transaction['signature'] = x['signature']
+
+        transaction['sign_data'] = [
+            x['user_name'],
+            x['user_id']    
+        ]
 
         # for n in nodes:
         res = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
@@ -73,7 +74,7 @@ def submit_ballot():
 
     return jsonify(res.json())
 
-def verify_ballot(arg):
+def verify_transaction(arg):
 
     h = SHA256.new((arg[0].lower() + arg[1]).encode())
     try:
