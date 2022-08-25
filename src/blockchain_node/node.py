@@ -116,15 +116,25 @@ class Node(threading.Thread):
                 return {"status": True, "msg": "Miner is already running..."}
             
             else:
-                
+                self.public_key = db.get_pk()[0][0]
                 mined_block = self.blockchain.start_miner(self.public_key, self.send_to_nodes)
                 
                 if mined_block != None:
                     self.blockchain.chain.append(mined_block)
                     db.add_block(mined_block)
 
-                    if len(self.blockchain.chain) % 10 == 0:
+                    # Check and update the difficulty after every fifth block
+                    # =======================================================
+                    if len(self.blockchain.chain) % 5 == 0:
                         self.blockchain.difficulty = self.blockchain.difficulty + 1
+                        
+                        path = Path('src/blockchain/data/blockchain.json')
+                        data = json.loads(path.read_text())
+                    
+                        data['difficulty'] = self.blockchain.difficulty
+                        path.write_text(json.dumps(data))
+                    # =======================================================
+
                 
 
                     data = {'type': 'NEW_BLOCK_REQUEST', 'block': mined_block.block_item}

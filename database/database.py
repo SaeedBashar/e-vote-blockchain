@@ -62,6 +62,22 @@ class Database:
 
                 return tmp
 
+        elif arg == 'contracts-states':
+            query = 'SELECT * FROM state WHERE length(public_key) = 64'
+
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute(query)
+                tmp = {}
+                for s in cursor:
+                    tmp[s[0]] = {
+                        'balance': s[1],
+                        'body': s[2],
+                        'timestamps': json.loads(s[3]),
+                        'storage': json.loads(s[4])
+                    }
+
+                return tmp
+
     @classmethod
     def get_user(self, data):
         query = "SELECT * FROM Profile WHERE u_name = ? AND password = ?"

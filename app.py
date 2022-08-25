@@ -1,5 +1,6 @@
 import binascii
 import json
+from math import trunc
 import os
 from flask import Flask, jsonify, request, render_template, redirect, session, escape, g
 from flask_cors import CORS
@@ -12,11 +13,12 @@ from datetime import datetime as dt
 
 from src.blockchain_node.node import Node
 from src.blockchain import keygen
+from src.wallet.wallet import Wallet
 from database.database import Database as db
-
+from api.api import API as api
+from util.util import *
 from argparse import ArgumentParser
 
-from src.wallet.wallet import Wallet
 
 parser = ArgumentParser()
 parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
@@ -24,13 +26,19 @@ args = parser.parse_args()
 port = args.port
 
 # addr = socket.gethostbyname(socket.gethostname())
-addr = "127.0.0.1"
+addr = "0.0.0.0"
 host_node = Node(addr, port)
 
 host_node.start()
 
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/api/<req>')
+def api_route(req):
+    response = api.get_url(req)
+
+    return jsonify(response)
 
 @app.route('/', methods=['GET'])
 def index():
@@ -246,83 +254,33 @@ def blocks():
         data['password'] = session['password']
         data['public_key'] = format_key_for_display(session['public_key'])
         
-        tmp = []
-        r_data = db.get_data('blocks')
-        for b in r_data:
-            tmp.append({
-                'index': b[0],
-                'timestamp': b[1],
-                'nonce': b[6],
-                'hash': b[7][:15] if b[7] != None else b[7]
-            })
-        data['blocks'] = tmp
+        data['blocks'] = get_blocks(trunc = True)
+        
         return render_template('home/page-blocks.html', data=data)
     else:
         redirect('/login')
 
 @app.route('/get_block_by_index')
-def get_block():
+def get_block_by_index():
     if 'u_name' in session:
-        index = request.args.get('index')
-        r_data = db.get_block(index)
-        block = {
-            'index': r_data[0][0],
-            'timestamp': r_data[0][1],
-            'data': r_data[0][2].replace("}", "}\n\n"),
-            'difficulty': r_data[0][3],
-            'merkle_root': r_data[0][4],
-            'prev_hash': r_data[0][5],
-            'nonce': r_data[0][6],
-            'hash': r_data[0][7]
-        }
+        
         data = {}
-        data['block'] = block
+        data['block'] = get_block()
         return render_template('/home/page-block-detail.html', data=data)
 
 @app.route('/transactions', methods=['GET', 'POST'])
 def transactions():
     if request.method == "GET":
         if 'u_name' in session:
-            tmp_tx = []
-            r_data = db.get_data('transactions')
-            for tx in r_data:
-                from_addr = format_key_for_display(tx[0])
-                to_addr = format_key_for_display(tx[1])
-
-                tmp_tx.append({
-                    "from_addr": from_addr[:15] if tx[0] != None else tx[0],
-                    "to_addr": to_addr[:15] if tx[1] != None else tx[1],
-                    "value": tx[2],
-                    "gas": tx[3],
-                    "args": json.loads(tx[4]),
-                    "timestamp": tx[5],
-                    "tx_hash": tx[6]
-                })
-            
-            tmp_tx1 = []
-            r_data = db.get_data('mined_transactions')
-            for tx in r_data:
-                from_addr = format_key_for_display(tx[1])
-                to_addr = format_key_for_display(tx[2])
-
-                tmp_tx1.append({
-                    "from_addr": from_addr[:15] if tx[1] != None else tx[1],
-                    "to_addr": to_addr[:15] if tx[2] != None else tx[2],
-                    "value": tx[3],
-                    "gas": tx[4],
-                    "args": json.loads(tx[5]),
-                    "timestamp": tx[6],
-                    "tx_hash": tx[7]
-                })
-
+           
             data = {}
             data['name'] = session['name']
             data['email'] = session['email']
             data['u_name'] = session['u_name']
             data['password'] = session['password']
             data['public_key'] = format_key_for_display(session['public_key'])
-            data['transactions'] = tmp_tx
-            data['mined_transactions'] = tmp_tx1
+            data['transactions'] = get_transactions(trunc = True)
+            data['mined_transactions'] = get_mined_transactions(trunc = True)
 
             return render_template('home/page-transactions.html', data = data)
         else:
@@ -364,37 +322,10 @@ def transactions():
 @app.route('/get_transaction_by_hash')
 def trans_detail():
     if 'u_name' in session:
-        tx_hash = request.args.get('hash')
-        r_data = db.get_transaction(tx_hash)
         
-        if len(r_data[0]) == 7: # 7 is the number of columns for pending txs in the database
-            from_addr = format_key_for_display(r_data[0][0])
-            to_addr = format_key_for_display(r_data[0][1])
-
-            tx = {
-                    "from_addr": from_addr,
-                    "to_addr": to_addr,
-                    "value": r_data[0][2],
-                    "gas": r_data[0][3],
-                    "args": r_data[0][4],
-                    "timestamp": r_data[0][5],
-                    "tx_hash": r_data[0][6]
-                }
-        else:
-            from_addr = format_key_for_display(r_data[0][0])
-            to_addr = format_key_for_display(r_data[0][1])
-
-            tx = {
-                    "from_addr": from_addr,
-                    "to_addr": to_addr,
-                    "value": r_data[0][3],
-                    "gas": r_data[0][4],
-                    "args": r_data[0][5],
-                    "timestamp": r_data[0][6],
-                    "tx_hash": r_data[0][7]
-                }
         data = {}
-        data['trans'] = tx
+        data['trans'] = get_transaction()
+
         return render_template('home/page-transaction-detail.html', data = data)
     else:
         return redirect('/login')
@@ -409,15 +340,8 @@ def contracts():
         data['password'] = session['password']
         data['public_key'] = format_key_for_display(session['public_key'])
 
-        tmp = []
-        r_data = db.get_data('states')
-        for b in r_data:
-            if len(b) == 64:  # 64 being the length of contracts address
-                tmp.append({
-                    'address': b[:40] if b != None else b,
-                    'balance': r_data[b]['balance']
-                })
-        data['contracts'] = tmp
+        data['contracts'] = get_contracts(trunc = True)
+
         return render_template('home/page-contracts.html', data=data)
     else:
         redirect('/login')
@@ -425,28 +349,11 @@ def contracts():
 @app.route('/get-contract-result', methods=['POST'])
 def get_contract_result():
     data = request.get_json()
-
-    res_data = db.get_contract_info(data['contract_addr'])
-    if len(res_data) != 0:
-        d1 = dt.now()
-        t1 = dt.timestamp(d1)
-        
-        if t1 < float(res_data[0][1]):
-            return jsonify({'status': False, 'message': 'No Such Contract!!'})
-        
-        elif t1 >= float(res_data[0][1]) and t1 <= float(res_data[0][2]):
-            return jsonify({'status': False, 'message': 'Contract is still in progress, can not get result now.!!'})
-        
-        else:
-            state = db.get_state(data['contract_addr'])[0]
-            data = {
-                'status': True,
-                'contract_result': json.loads(state[4])
-            }
-            return jsonify(data)
-
-    return jsonify({'status': False, 'message': 'No Such Contract!!'})
-
+    
+    response = get_contract(data['contract_addr'])
+    
+    return jsonify(response
+    )
 @app.route('/connect-node', methods=['GET', 'POST'])
 def connect_node():
     if 'u_name' in session:
@@ -479,7 +386,10 @@ def connect_node():
         else:
             data = request.get_json()
             return_data = host_node.connect_with_node(data['address'], int(data['port']))
-            pk = db.get_connected_node((data['address'], int(data['port'])))[0][2]
+            res = db.get_connected_node((data['address'], int(data['port'])))
+            pk = None
+            if len(res) != 0:
+                pk = res[0][2]
             return_data['public_key'] = format_key_for_display(pk)
         
         return jsonify(return_data)
@@ -488,7 +398,6 @@ def connect_node():
 
 @app.route('/mine', methods=['GET'])
 def mine_block():
-    host_node.public_key = session.get('public_key')
     return_data = host_node.start_mining()
     
     if return_data['status'] == True:
@@ -516,38 +425,6 @@ def check_sync():
 def page_not_found(error):
     return render_template('home/page-error-404.html'), 404
 
-def format_key_for_display(key, type='pub'):
-    if key != None:
-        if type == 'pub':
-            key = key[27 : len(key) - 25]
-            return binascii.hexlify(key.encode()).decode().upper()
-        else:
-            key = key[32 : len(key) - 30]
-            return binascii.hexlify(key.encode()).decode().upper()
-    else:
-        return key
-
-def format_key_for_use(key, type="pub"):
-    pub_start = '-----BEGIN PUBLIC KEY-----\n'
-    pub_end = '\n-----END PUBLIC KEY-----'
-
-    priv_start = '-----BEGIN RSA PRIVATE KEY-----\n'
-    priv_end = '\n-----END RSA PRIVATE KEY-----'
-
-    if key != None:
-        if key[:2].upper() != "SC":
-            if type == 'pub':
-                key = binascii.unhexlify(key.lower()).decode()
-                key = f"{pub_start}{key}{pub_end}"
-                return key
-
-            else:
-                key = binascii.unhexlify(key.lower()).decode()
-                key = f"{priv_start}{key}{priv_end}"
-                return key
-        return key
-    else:
-        return key
 
 # Used by flask's session variable
 app.secret_key = 'mysecret'

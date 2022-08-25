@@ -8,7 +8,8 @@ from database.database import Database as db
 def mine(chain):
     tmp_txs = chain.tx_to_add_block()
     if len(tmp_txs) != 0:
-        block = Block(len(chain.chain), time(), tmp_txs, chain.chain[-1].hash, chain.difficulty)
+        length = len(db.get_data('blocks'))
+        block = Block(length, time(), tmp_txs, chain.chain[-1].hash, chain.difficulty)
         dif_str = "".join(["0" for x in range(chain.difficulty)])
         while block.hash[:chain.difficulty] != dif_str:
             block.nonce +=1

@@ -36,6 +36,7 @@ hSQXq0JuWAJUFG0gqQIDAQAB
 
 from database.database import Database as db
 
+
 class Blockchain:
     def __init__(self):
 
@@ -56,12 +57,19 @@ class Blockchain:
                 db.add_to_state(init_public_key)
         
 
-        self.difficulty = 4
+        # Initiliaze the difficulty and mining reward from databse.json file
+        # ==================================================================
+        path = Path('src/blockchain/data/blockchain.json')
+        data = json.loads(path.read_text())
+
+        self.difficulty = data['difficulty']
+        self.reward = data['reward']
+        # ==================================================================
+
         self.chain = []
 
         self.miner_thread = None
 
-        self.reward = 10
         
         self.contract_params = {}
         c_res = db.get_data('contracts')
@@ -91,6 +99,7 @@ class Blockchain:
         
         block.prev_hash = '0' * 64
         block.mine_block(self.difficulty)
+        block.set_block()
 
         self.chain.append(block)
         db.add_block(block)
@@ -127,12 +136,19 @@ class Blockchain:
         
             if is_valid_block:
 
-                if int(n_block['index']) % 10 == 0:
+                # Check and update the difficulty after every fifth block
+                # =======================================================
+                if len(self.chain) % 5 == 0:
                     self.difficulty = self.difficulty + 1
+                    
+                    path = Path('src/blockchain/data/blockchain.json')
+                    data = json.loads(path.read_text())
                 
-                    # if int(n_block['index']) % 100 == 0:
-                    #     self.difficulty = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
-                
+                    data['difficulty'] = self.difficulty
+                    path.write_text(json.dumps(data))
+                # =======================================================
+
+                   
                 tmp_txs = []
                 for t_item in n_block['data']:
                     tmp = Transaction(
@@ -179,6 +195,8 @@ class Blockchain:
                     'new_block': tmp_block
                 }
         
+            return {'status': False}
+
     def add_transaction(self, trans, send_nodes, node_conn_exempt = None):
         if not trans['to_addr'] == None and trans['to_addr'][:2] != "SC":
             if trans['from_addr'] != None: # if funds being transferred to another account
@@ -326,7 +344,7 @@ class Blockchain:
                     contract_tx = Transaction(trans['contract_addr'], None, 0, 0)
                     db.update_state_obj(0, contract_tx)
 
-                    state = db.get_data('states')[trans['contract_addr']]
+                    state = db.get_data('contracts-states')[trans['contract_addr']]
                     return_state = c_module.contract(action='init', state = state)
                     db.update_state_cont(trans['contract_addr'], return_state)
                     
@@ -377,7 +395,7 @@ class Blockchain:
                     fp, path, desc = imp.find_module(trans['to_addr'][2:], path=[os.path.join(BASE_DIR, "contracts")])
                     c_module = imp.load_module(trans['to_addr'][2:], fp, path, desc)
                     
-                    state = db.get_data('states')[trans['to_addr'][2:]]
+                    state = db.get_data('contracts-states')[trans['to_addr'][2:]]
 
                     return_state = c_module.contract(action='vote_cast', state = state, args = trans['args'])
                     db.update_state_cont(trans['to_addr'][2:], return_state)

@@ -60,6 +60,7 @@ class Block:
         blk.hash = el[7]
         blk.nonce = int(el[6])
 
+        blk.set_block()
         return blk
 
     def get_hash(self):
@@ -77,22 +78,16 @@ class Block:
     @classmethod
     def is_valid(self, block, last_block):
 
-        # str_val = str(block['index']) + str(block['timestamp']) + json.dumps(block['data']) + str(block['difficulty']) + str(block['prev_hash']) + str(block['nonce']) + str(block['merkle_root'])
-        # if hashlib.sha256(str_val.encode()).hexdigest() !=  block['hash']:
-        #     return False
 
-        # if float( block['timestamp']) > time() :
-        #     return False
+        if float( block['timestamp']) > time() :
+            return False
 
-        # if block['prev_hash'] != last_block['hash']:
-        #     return False
+        if block['prev_hash'] != last_block['hash']:
+            return False
 
-        # if int(block['index']) - 1 != int(last_block['index']):
-        #     return False
-
-        # for tx in block['data']:
-        #     if Transaction.is_valid(tx) == False:
-        #         return False
+        for tx in block['data']:
+            if Transaction.is_valid(tx) == False:
+                return False
 
         
         return True

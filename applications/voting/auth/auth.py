@@ -242,7 +242,8 @@ def get_result_for_user():
         data['populate_data'] = {
             'cand_names': construct_data_for_display()['c_names'],
             'result': ELECTION_INFO['result'],
-            'portfolio': ELECTION_INFO['portfolio']
+            'portfolio': ELECTION_INFO['portfolio'],
+            'total_votes': ELECTION_INFO['result']['total_votes']
         }
 
         return jsonify({'status': True, 'data' : data})

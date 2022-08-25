@@ -24,8 +24,8 @@ def cxt_proc():
         return str(el).upper()
     
     def percent(el):
-          
-        return str((el/1) * int(100))
+        if result_data !=  None:
+            return str((el/int(result_data['total_votes'])) * int(100))
     
     return {'upper': toUpper, 'percent': percent}
 
