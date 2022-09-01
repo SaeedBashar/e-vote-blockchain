@@ -30,7 +30,7 @@ class Wallet:
 
         tmp = ""
         for x in data:
-            tmp += x
+            tmp += str(x)
 
         h = SHA256.new(tmp.encode())
         sig = signer.sign(h)

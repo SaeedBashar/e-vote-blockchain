@@ -20,6 +20,14 @@ def get_data(arg, data):
             cursor = conn.execute(query, data)
             return cursor.fetchall()[0][0]
 
+    elif arg == 'user':
+        query = "SELECT * FROM Voters WHERE voterId = ?"
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute(query, data)
+            out = cursor.fetchall()[0]
+            print(out)
+            return out
+
 def get_user(data):
     query = "SELECT * FROM Voters WHERE username = ? AND password = ?"
 
@@ -40,3 +48,21 @@ def insert_user_vote(id):
     with sqlite3.connect(db_path) as conn:
         conn.execute(query, (1, id))
         conn.commit()
+
+def verify_user(id):
+    query = "Insert into Verification_table values(?, ?)"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(query, (id, 1))
+        conn.commit()
+
+def check_if_verified(id):
+    query = "SELECT * FROM Verification_table WHERE id = ?"
+
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, (id,))
+        x = cursor.fetchall()
+        if len(x) != 0:
+            return x[0]
+
+        return x

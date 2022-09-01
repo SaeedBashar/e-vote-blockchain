@@ -390,7 +390,7 @@ class Blockchain:
                 )
 
             if res['status'] == True:
-                tmp = float(trans['args'][1])
+                tmp = float(trans['args'][2])
 
                 if trans['to_addr'][2:] not in self.contract_params:
                     tmp_cont = db.get_contract_info(trans['to_addr'][2:])[0]

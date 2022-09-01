@@ -2,8 +2,14 @@ from urllib import response
 from flask import Flask, session
 from flask import render_template, redirect, request, jsonify, g
 from math import *
+from datetime import datetime as dt
+from pathlib import Path
+import binascii
 
-# from utils import get_ip
+import Crypto.Random
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
 
 import datetime, time
 import json
@@ -11,7 +17,7 @@ import codecs
 import requests
 import os
 
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+# __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 app = Flask(__name__)
 
@@ -48,24 +54,37 @@ def login():
         uname = request.form.get('username')
         pword = request.form.get('password')
         
-        response = requests.post('http://127.0.0.1:7000/auth', json={'username': uname, 'password': pword})
+        response = requests.post('http://127.0.0.1:7000/user-login', json={'username': uname, 'password': pword})
         data = response.json()
+
         if data['status'] == True:
             if 'message' not in data:
-                session['ELECTION_INFO'] = data['election_info']
-                session['ELECTION_AUTH'] = data['election_auth']
-                session['SIGNATURE'] = data['signature']
-                session['uid'] = data['user_id']
-                session['isLoggedIn'] = True
-                session['uname'] = uname
+                response = requests.post('http://127.0.0.1:7000/user-get-info', json={'id': data['id']}).json()
+                if response['status'] == True:
+                    if 'message' not in response:
+                        session['ELECTION_INFO'] = response['election_info']
+                        session['ELECTION_ADDR'] = response['election_addr']
+                        session['MINER_NODES'] = response['miner_nodes']
+                        session['SIGNATURE'] = response['signature']
+                        session['uid'] = response['user_id']
+                        session['isLoggedIn'] = True
+                        session['uname'] = uname
 
-                global hasVoted
-                g.hasVoted = True
-                
-                return redirect('/index')
+                        keys = gen_key()
+                        session['public_key'] = keys['public_key']
+                        session['private_key'] = keys['private_key']
+
+                        global hasVoted
+                        g.hasVoted = True
+                        
+                        return redirect('/index')
+                    else:
+                        return redirect('/voted')
             else:
                 return redirect('/voted')
-        return {'status': False, 'message': 'You are not eligible to vote'}
+        else:
+            return data
+        # return {'status': False, 'message': 'You are not eligible to vote'}
 
 @app.route('/index')
 def index():
@@ -80,14 +99,39 @@ def index():
 
 @app.route('/submit-ballot', methods=['POST'])
 def submit_ballot():
-    data = request.get_json()
+    voted_candidates = request.get_json()
 
-    ballot_paper = {}
-    ballot_paper['voted_candidates'] = data
-    ballot_paper = completeBallot(ballot_paper)
+    # =================================================================
+    transaction = {
+            'from_addr': format_key_for_api(session['public_key']),
+            'to_addr': 'SC' + session['ELECTION_ADDR'],
+            'value': 0,
+            'gas': 0,
+            'args': [
+                {
+                    'signature': session['SIGNATURE'], 
+                    'sign_data': [session['uname'], session['uid']]
+                },
+                voted_candidates
+            ]
+        }
+    time_voted = dt.timestamp(dt.now())
+    transaction['args'].append(time_voted)
+    
+    transaction['action'] = 'vote_cast'
+    
+    transaction['sign_data'] = [
+        session['uname'],
+        session['uid'],
+    ]
+    transaction['sign_data'].extend(list(voted_candidates.values()))
 
-    for ea in session['ELECTION_AUTH']:
-        response = requests.post("http://" + ea + "/submit-transaction",json=ballot_paper)
+    transaction['signature'] = sign_ballot(session['private_key'], transaction['sign_data'])
+
+    # =================================================================
+
+    for miner in session['MINER_NODES']:
+        response = requests.post("http://" + miner + "/transactions",json=transaction)
 
     return {'status': True}
 
@@ -127,12 +171,51 @@ def get_result_data():
     return jsonify(result_data)
 
 
-def completeBallot(arg):
-    arg['signature'] = session['SIGNATURE']
-    arg['user_id'] = session['uid']
-    arg['user_name'] = session['uname']
 
-    return arg
+def gen_key():
+ 
+    key = RSA.generate(1024)
+    priv_key = key.exportKey()
+    pub_key = key.publickey().exportKey()
+    keys = {
+        'private_key': priv_key.decode(),
+        'public_key': pub_key.decode()
+    }
+
+    # Testing purposes only
+    path = Path('data/data.json')
+    data = json.loads(path.read_text())
+    
+    data['voters_keys'].append(keys)
+    path.write_text(json.dumps(data))
+
+    return keys
+
+def sign_ballot(pv_key, arg):
+    
+    priv_key = RSA.importKey(pv_key.encode())
+    signer = PKCS1_v1_5.new(priv_key)
+
+    tmp = ""
+    for x in arg:
+        tmp += str(x)
+
+    h = SHA256.new(tmp.encode())
+    sig = signer.sign(h)
+
+    return str(sig)
+
+def format_key_for_api(key, type='pub'):
+    if key != None:
+        if type == 'pub':
+            key = key[27 : len(key) - 25]
+            return binascii.hexlify(key.encode()).decode().upper()
+        else:
+            key = key[32 : len(key) - 30]
+            return binascii.hexlify(key.encode()).decode().upper()
+    else:
+        return key
+
 
 app.secret_key = 'mysecret'
 

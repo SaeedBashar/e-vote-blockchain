@@ -10,6 +10,5 @@
         ],
         "result": null
     },
-    "election_authorities": ["127.0.0.1:6000"],
     "miner_nodes": ["127.0.0.1:4000"]
 }

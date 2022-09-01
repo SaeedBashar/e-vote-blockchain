@@ -26,7 +26,7 @@ path = Path('database/election_data.json')
 data = json.loads(path.read_text())
 
 ELECTION_INFO = data['election_info']
-election_authorities = set(data['election_authorities'])
+# election_authorities = set(data['election_authorities'])
 miner_nodes = data['miner_nodes']
 # =====================================================
 
@@ -258,21 +258,21 @@ def logout():
 
     return redirect('/')
 
-@app.route('/get-info', methods=['POST'])
-def get_info():
-    res = request.get_json()['addr']
-    election_authorities.add(res)
+# @app.route('/get-info', methods=['POST'])
+# def get_info():
+#     res = request.get_json()['addr']
+#     election_authorities.add(res)
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
-    with codecs.open(file_path,encoding='utf8',mode='r') as inp:
-        data = inp.read()
+#     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#     file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
+#     with codecs.open(file_path,encoding='utf8',mode='r') as inp:
+#         data = inp.read()
 
-    data = {
-        'public_key': get_key()['public_key'],
-        'nodes': miner_nodes,
-        'contract_addr': get_election_addr(data)
-    }
+#     data = {
+#         'public_key': get_key()['public_key'],
+#         'nodes': miner_nodes,
+#         'contract_addr': get_election_addr(data)
+#     }
 
     return jsonify(data)
 
@@ -284,29 +284,53 @@ def user_vote():
     
     return jsonify({'status': True})
 
-@app.route('/auth', methods=['POST'])
+@app.route('/user-login', methods=['POST'])
 def auth_login():
     x = request.get_json()
     r_data = db.get_user((x['username'], x['password']))
     
-    if len(r_data) != 0:
-        if r_data[0][3] == 0:
-            # check to see if voter has an ID already
-            hasId = False
-            id = db.get_data('voterId', (r_data[0][0], r_data[0][1]))
-            if id != None:
-                hasId = True
+    if len(r_data) != 0:  # Check if is an eligible voter
+        if r_data[0][3] == 0: # Check if he/she has voted already
+            if r_data[0][2] == None: # Check if he/she has an id
+                userId = Crypto.Random.new().read(64).hex()
+                db.insert_voter_id(userId, (x['username'], x['password']))
+                r_data[0][2] = userId
+            db.verify_user(r_data[0][2])
+            return jsonify({'status': True, 'id': r_data[0][2]})
+        else:
+            return jsonify({'status': True, 'message': 'You have already voted'})
+    else:
+        return jsonify({'status': False, 'message': 'You are not eligible to vote'})
 
+
+@app.route('/user-get-info', methods=['POST'])
+def user_get_info():
+    x = request.get_json()
+    r_data = db.check_if_verified(x['id'])
+
+    if len(r_data) != 0:
+        if r_data[1] == 1:
+            hasId = True
+            db.insert_user_vote(r_data[0])
+            user = db.get_data('user', (r_data[0],))
+
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
+            with codecs.open(file_path,encoding='utf8',mode='r') as inp:
+                data = inp.read()
+                
             return {
                 'status': True,
-                'signature': sign_ballot((r_data[0][0], r_data[0][1]), hasId),
-                'election_auth': list(election_authorities),
+                'signature': sign_ballot((user[0], user[1]), hasId),
+                'miner_nodes': list(miner_nodes),
                 'election_info': ELECTION_INFO,
-                'user_id': r_data[0][2]
+                'election_addr': get_election_addr(data),
+                'user_id': r_data[0]
             }
-        return {'status': True, 'message': 'Results will be available soon'}
+        else:
+            return {'status': True, 'message': 'Results will be available soon'}
     else:
-        return {'status': False}
+        return {'status': False, 'message': 'Please verify your credentials and try again'}
 
 def get_election_addr(arg):
     path = Path('database/data.json')
@@ -346,6 +370,7 @@ def sign_ballot(arg, hasId=False):
         userId = Crypto.Random.new().read(64).hex()
         db.insert_voter_id(userId, arg)
     else:
+        print(arg)
         userId = db.get_data('voterId', arg)
         
     priv_key = RSA.importKey(data['keys']['private_key'].encode())
