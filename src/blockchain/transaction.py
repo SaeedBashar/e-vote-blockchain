@@ -11,10 +11,12 @@ from Crypto.Signature import PKCS1_v1_5
 import time as tm
 from time import time
 
-from src.blockchain import keygen
 
 
 class Transaction:
+
+    # Constructor for the Transaction Class
+    # =====================================
     def __init__(self, from_addr, to_addr, value, gas = 1, args = [], timestamp=0) -> None:
         self.from_addr = from_addr
         self.to_addr = to_addr
@@ -25,16 +27,19 @@ class Transaction:
         self.tx_hash = self.get_hash()
 
         self.set_transaction()
+    # =====================================
 
+
+    # Method to generate a hash of the transaction
+    # ============================================
     def get_hash(self):
         str_val = str(self.from_addr) + str(self.to_addr) + str(self.value) + str(self.gas) + json.dumps(self.args) + str(self.timestamp)
         return hashlib.sha256(str_val.encode()).hexdigest()
+    # ============================================
 
     
-    def hash(self):
-        str_val : str = self.from_addr + self.to_addr + str(self.value) + str(self.gas) + str(self.args) + str(self.timestamp)
-        return SHA256.new(str_val.encode('utf8'))
-
+    # Method to construct a dictionary object from the transaction class
+    # ==================================================================
     def set_transaction(self):
         self.tx_item = {
             'from_addr': self.from_addr,
@@ -45,7 +50,11 @@ class Transaction:
             'timestamp': self.timestamp,
             'tx_hash' : self.tx_hash
         }
+    # ==================================================================
 
+
+    # Static Method to generate a transaction object from a transaction dictionary
+    # ============================================================================
     @classmethod
     def get_tx_object(self, el):
         if type(el) == dict:
@@ -63,7 +72,11 @@ class Transaction:
             tx.set_transaction()
 
         return tx
+    # ============================================================================
+    
 
+    # Method to check the validity of a transaction
+    # =============================================
     @classmethod
     def is_valid(self, tx):
        
@@ -72,5 +85,5 @@ class Transaction:
             return False
     
         return True
+    # =============================================
 
-    

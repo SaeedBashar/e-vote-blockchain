@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Completed</title>
+{% endblock  %}
+
+{% block body %}
+    <style>
+        .card {
+            width: 530px;
+            margin: auto;
+            margin-top: 70px;
+        }
+    </style>
+<!--<div class='vote-bg' style="position: fixed;width: 100%;height: 100%;background-image: url({{ url_for('static',filename ='images/vote3.jpg')}})">-->
+    <div class="card alert alert-danger">
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <h2 class="card-title">You are done voting</h2>
+            <p class="card-text">Elections results will be declared soon...</p>
+            <a href="/get-result" class="btn btn-primary">View Results</a>
+            <button onclick="leaveSite()" class="btn btn-danger">Exit</button>
+        </div>
+    </div>
+<!--</div>-->
+    <script>
+        function leaveSite(){
+            fetch('/leave')
+              .then(x=>x.json())
+              .then(x=>{
+                console.log(x)
+                window.location.assign('/login')
+              })
+              .catch(err=>console.log(err))
+        }
+
+    </script>
+{% endblock %}
+

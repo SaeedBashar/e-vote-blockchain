@@ -1,0 +1,97 @@
+{% extends 'base-logged-in-pages.html' %}
+
+{% block head %}
+  <title>Transaction List</title>
+
+{%endblock%}
+
+{% block subbody%}
+
+<main class="main" id="main">
+  <div class="container" style="margin-top:70px">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+            <div class="pagetitle">
+                <h1>Pending Transaction List</h1>
+            </div>
+          
+            <section class="section">
+                <div class="row">
+                  <div class="col-lg-12">
+                    <div class="card">
+                      <div class="card-body">
+                        <table class="table datatable">
+                          <thead>
+                            <tr>
+                              <th scope="col">#</th>
+                              <th scope="col">From</th>
+                              <th scope="col">To</th>
+                              <th scope="col">Value</th>
+                              <th scope="col">View</th>
+                            </tr>
+                          </thead>
+                          <tbody id="trans">
+                            {% set i = 1%}
+                            {% for n in data['transactions'] %}
+                              <tr>
+                                <th scope='row'> {{i}} </th>
+                                <td class=""> {{n['from_addr']}} </td>
+                                <td class=""> {{n['to_addr']}} </td>
+                                <td> {{n['value']}} </td>
+                                <td> <a href="/get_transaction_by_hash?hash={{n['tx_hash']}}">details</a></td>
+                              </tr>
+                              {% set i = i + 1 %}
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </section>  
+        </div>
+        
+        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+          <div class="pagetitle">
+              <h1>Mined Transaction List</h1>
+          </div>
+        
+          <section class="section">
+              <div class="row">
+                <div class="col-lg-12">
+                  <div class="card">
+                    <div class="card-body">
+                      <table class="table datatable">
+                        <thead>
+                          <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">From</th>
+                            <th scope="col">To</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">View</th>
+                          </tr>
+                        </thead>
+                        <tbody id="trans">
+                          {% set i = 1%}
+                          {% for n in data['mined_transactions'] %}
+                            <tr>
+                              <th scope='row'> {{i}} </th>
+                              <td class=""> {{n['from_addr']}} </td>
+                              <td class=""> {{n['to_addr']}} </td>
+                              <td> {{n['value']}} </td>
+                              <td> <a href="/get_transaction_by_hash?hash={{n['tx_hash']}}">details</a></td>
+                            </tr>
+                            {% set i = i + 1 %}
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </section>  
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

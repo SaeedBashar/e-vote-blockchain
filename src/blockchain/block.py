@@ -11,9 +11,6 @@ from Crypto.Hash import  SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
-
-from src.blockchain import keygen
-
 from src.blockchain.merkle_tree import Merkle_tree
 from src.blockchain.transaction import Transaction
 

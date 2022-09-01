@@ -1,0 +1,149 @@
+
+  {% extends 'base-logged-in-pages.html' %}
+
+  {% block head %}
+    <title>Home</title>
+   
+  {%endblock%}
+
+  {% block subbody%}
+
+
+  <main id="main" class="main">
+
+    <section class="section dashboard">
+      <div class="row">
+
+        <div class="col-lg-8">
+          <div class="row">
+
+            <div class="col-xxl-4 col-md-6">
+              <div class="card info-card sales-card">
+
+                <div class="card-body">
+                  <h5 class="card-title">Sent</h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{data['sent']}}</h6>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="col-xxl-4 col-md-6">
+              <div class="card info-card revenue-card">
+
+
+                <div class="card-body">
+                  <h5 class="card-title">Received</h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{data['received'] }}</h6>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="col-xxl-4 col-xl-12">
+
+              <div class="card info-card customers-card">
+
+                <div class="card-body">
+                  <h5 class="card-title">Total</h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-currency-dollar"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{data['received'] + data['sent'] }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+
+          
+            <div class="col-12">
+              <div class="card recent-sales">
+
+
+                <div class="card-body">
+                  <h5 class="card-title">Recently Mined Blocks</h5>
+
+                  <table class="table table-borderless datatable">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Timestamp</th>
+                        <th scope="col">Nonce</th>
+                        <th scope="col">Hash</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for b in data['blocks'] %}
+                      <tr>
+                        <th scope="row"><a href="/get_block_by_index?index={{b['index']}}">{{b['index']}}</a></th>
+                        <td>{{b['timestamp']}}</td>
+                        <td>{{b['nonce']}}</td>
+                        <td>{{b['hash']}}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        
+        <div class="col-lg-4">
+
+          
+          <div class="card">
+           
+            <div class="card-body">
+              <h5 class="card-title">Recent Transactions</h5>
+
+              <div class="activity">
+                {% for t in data['transactions'] %}
+                  <div class="activity-item d-flex">
+                    <div class="activite-label">{{t['value']}}</div>
+                    <i class='bi bi-circle-fill activity-badge text-success align-self-start'></i>
+                    <div class="activity-content">
+                      <a href="/get_transaction_by_hash?hash={{t['tx_hash']}}">{{t['from_addr']}}</a>
+                    </div>
+                  </div><!-- End activity item-->
+                {% endfor %}
+              </div>
+
+            </div>
+          </div>
+
+         
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+  
+  {%endblock%}

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block head %}
+
+{% endblock  %}
+
+{% block body %}
+<div class="container">
+    <nav class="navbar bg-light" style="margin: 30px auto">
+        <div class="container-fluid text-center">
+          <a class="navbar-brand align-items-center"  style="font-size: 30px;display: block;width: 50%;margin: auto;">
+            ELECTION 2022
+          </a>
+        </div>
+    </nav>
+    <!--<div id="id02" class="cus-modal bg-dark animate" style="margin-top:65px;margin-left: 300px; width: 400px;height:400px;padding:10px">
+        <div class="imgcontainer">
+          <span style="color: white" onclick="document.getElementById('id02').style.display='none'" class="close" title="Close Modal">&times;</span>
+        </div>
+        <label for="" style="color: white;font-size: 25px">Portfolio</label>
+        <input type="text" id='newP' value="" class="form-control">
+        <button onclick="exitModal()">Exit</button>
+    </div>-->
+    <div id="id02" class="cus-modal alert-danger ">
+        <div class="imgcontainer">
+            <button style="color: red;border:none" onclick="exitModal()" class="close" title="Close Modal">&times;</span>
+        </div>
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <h2 class="card-title" id="info"></h2>
+            <button onclick="exitModal()" class="btn btn-danger">Exit</button>
+        </div>
+    </div>
+    {% for p in data['info']['portfolio']%}
+    <div id="{{p}}" class="">
+        <h3 class="mb-4" style="text-transform: uppercase; text-align: center">{{p}}</h3>
+        <div class="row justify-content-around mb-5">
+            {% for cand in data['info']['candidates'] %}
+                {% if cand['portfolio'] == p%}
+                <div class="col-lg-4">
+                    <div class="card mb-3" style="max-width: 540px;">
+                        <img src="{{url_for('static', filename="hunger1.jpg")}}" class="img-fluid rounded-start cand-img" alt="...">
+                        <div class="card-body">
+                            <h5 class="card-title">{{cand['name']}}</h5>
+                            <p class="card-text">{{cand['desc']}}</p>
+                            <button onclick="voteFor(this)" candid="{{cand['id']}}" candp="{{cand['portfolio']}}" class="btn btn-info btn-block">Vote</button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <div>
+    </div>
+    {% endfor %}
+    <div>
+        <button class="btn btn-secondary btn-block btn-lg mb-5" onclick="submitBallot()">Submit Ballot</button>
+    </div>
+    <script>
+        var votedList = {}
+        function voteFor(el){
+            Object.defineProperty(votedList, el.getAttribute('candp'), {value : el.getAttribute('candid')})
+            const nodeList = document.querySelectorAll("button[candp=" + el.getAttribute('candp') + "]");
+            for (let i = 0; i < nodeList.length; i++) {
+                nodeList[i].disabled = true;
+            }
+            console.log(votedList)
+        }
+
+        function submitBallot(){
+            
+            let data = {}
+            for(let k of Object.getOwnPropertyNames(votedList)){
+                data[k] = votedList[k]
+            }
+
+            fetch('/submit-ballot',{
+                method: "POST",
+                mode: "cors",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+              })
+              .then(x=>x.json())
+              .then(x=>{
+                if(x.status == true)
+                    window.location.assign('/voted')
+                else{
+                    document.getElementById('info').innerHTML = x.message;
+                    document.getElementById('id02').style.display='block';
+                }
+               })
+              .catch(err=>console.log(err))
+        }
+
+        function exitModal() {
+            document.getElementById('id02').style.display='none';
+            window.location.assign('/login')
+        }
+    </script>
+</div>
+{% endblock  %}

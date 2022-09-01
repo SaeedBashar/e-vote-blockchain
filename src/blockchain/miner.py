@@ -2,9 +2,10 @@
 import math
 from time import time
 from src.blockchain.block import Block
-from src.blockchain import keygen
 from database.database import Database as db
 
+# Method to mine a new block using proof of work algorithm
+# ========================================================
 def mine(chain):
     tmp_txs = chain.tx_to_add_block()
     if len(tmp_txs) != 0:
@@ -24,3 +25,4 @@ def mine(chain):
 
         return block
     return None
+# ========================================================

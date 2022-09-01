@@ -1,0 +1,124 @@
+{% extends 'base-logged-in-pages.html' %}
+
+{% block head %}
+    <title>Election Results</title>
+   
+{% endblock  %}
+
+{% block subbody %}
+<main id="main" class="main">
+    <div class="card-body pb-0">
+    <h5 class="card-title">ELECTION RESULT</h5>
+
+    <div class="container">
+        {% for p in data['portfolio'] %}
+            <h3>{{upper(p)}}</h3>
+            <div id="{{p}}" class="row">
+                <div class="col-md-8">   
+                    <div class="row">
+                            {% for p1 in  data['cands'][p]%}
+                                <div class="col-6">
+                                    <div class="card" style="width: 100%">
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{p1['name']}}</span></h5>
+                        
+                                            <div class="d-flex align-items-center">
+                                                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                                    <i class="bi bi-bar-chart"></i>
+                                                </div>
+                                                <div class="ps-3">
+                                                    <h6 style="margin-top: 7px">{{p1['vote_count']}}</h6>
+                                                </div>
+                                                <span class="text-success small pt-1 fw-bold" style="font-size: 25px;
+                                                text-align: right;
+                                                display: block;
+                                                width: 100%;">
+                                                    {{ percent(p1['vote_count']) + "%" }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                <div class="col-md-4">
+                    <div id="{{p}}-chart" style="min-height: 400px;" class="echart"></div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        data = null
+    
+        document.addEventListener("DOMContentLoaded", () => {
+
+        var tmp = {};
+        fetch('/get-result')
+        .then(x=>x.json())
+        .then(x=>{
+            data = x
+            console.log(data)
+        })
+
+        setTimeout(()=>{
+            cands = data.result.candidates
+            for(let i in cands){
+                tmp[i] = []
+
+                for(let j in cands[i]){
+                    for(let k of data.cand_names){
+                        if(+j == +k.id){
+                            tmp[i].push({
+                                value: cands[i][j],
+                                name: k.name
+                            })
+                        }
+                    }
+                }
+            }
+            
+
+            for(let i in tmp){
+                console.log(tmp[i])
+                echarts.init(document.querySelector("#" + i + "-chart")).setOption({
+                    tooltip: {
+                    trigger: 'item'
+                    },
+                    legend: {
+                    top: '5%',
+                    left: 'center'
+                    },
+                    series: [{
+                    name: i,
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: tmp[i]
+                    }]
+                });
+            }
+            
+        }, 3000)
+      });
+
+    </script>
+
+    </div>
+</main>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block head %}
+
+{% endblock %}
+
+{% block body %}
+  <header id="header" class="header fixed-top d-flex align-items-center">
+
+    <div class="d-flex align-items-center justify-content-between">
+      <a href="/home" class="logo d-flex align-items-center">
+        <!--<img src="{{url_for('static', filename='assets/img/logo.png')}}" alt="">-->
+        <span class="d-none d-lg-block">Blockchain Node</span>
+      </a>
+      <i class="bi bi-list toggle-sidebar-btn"></i>
+    </div>
+    <div style="margin-left: 10px">
+      <input type="button" class="form-control" onclick="syncChain()" value="Synchronize" title="Update the state of your blockchain">
+    </div>
+    <nav class="header-nav ms-auto">
+      <ul class="d-flex align-items-center">
+        <li>  
+            <div class="modal fade" id="disablebackdrop" tabindex="-1" data-bs-backdrop="false">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Information</h5>
+                    <button type="button" class="btn-close" onclick="closeModal()" aria-label="Close"></button>
+                  </div>
+                  <div id="modal-body" class="modal-body">
+
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Ok</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </li>
+        
+        <li class="nav-item">
+          <div class="form-check form-switch form-control">
+            <input class="form-check-input" name="mine" type="checkbox" id="flexSwitchCheckDefault">
+            <label class="form-check-label" for="flexSwitchCheckDefault"><b style="color: #636a70">Mine Block</b></label>
+          </div>
+          <script>
+            var cb = document.querySelector("input[name=mine]");
+            var checkUpdateComplete
+
+            cb.addEventListener('change', function() {
+              if (this.checked) {
+                fetch('/mine')
+                .then(data=>data.json())
+                .then(data=>{
+                    console.log(data)
+                    el = document.getElementById('disablebackdrop')
+                    if(data.status == true){
+                        el.setAttribute('arial-modal', true)
+                        el.setAttribute('role', 'dialog')
+                        el.removeAttribute('arial-hidden')
+                        el.style.display = 'block'
+                        el.classList.add('show')
+                        
+                        this.checked = false
+                        document.getElementById('modal-body').innerText = data.message
+                    }
+                })
+                .catch(err=>console.log(err))
+              } else {
+                console.log("Checkbox is not checked..");
+              }
+            })
+
+            function closeModal(){
+                el = document.getElementById('disablebackdrop')
+                el.removeAttribute('arial-modal')
+                el.removeAttribute('role', 'dialog')
+                el.setAttribute('arial-hidden', true)
+                el.style.display = 'none'
+                el.classList.remove('show')
+            }
+
+            function syncChain(){
+              fetch('/sync')
+                .then(data=>data.json())
+                .then(data=>{
+                    console.log(data)
+                    let el = document.getElementById('disablebackdrop')
+                    
+                    el.setAttribute('arial-modal', true)
+                    el.setAttribute('role', 'dialog')
+                    el.removeAttribute('arial-hidden')
+                    el.style.display = 'block'
+                    el.classList.add('show')
+                    
+                    document.getElementById('modal-body').innerText = data.message
+                    
+                    if(data['status'] == true){
+                      el = document.getElementById('syncdisable')
+                    
+                      el.setAttribute('arial-modal', true)
+                      el.setAttribute('role', 'dialog')
+                      el.removeAttribute('arial-hidden')
+                      el.style.display = 'block'
+                      el.classList.add('show')
+
+                      checkUpdateComplete = setInterval(checkSync, 5000)
+                    }
+                })
+                .catch(err=>console.log(err))
+            }
+
+            function checkSync(){
+              fetch('/check-sync-complete')
+              .then(data=>data.json())
+              .then(data=>{
+                if( data['status'] == true){
+                    el = document.getElementById('syncdisable')
+                    el.style.display = 'none'
+                    el.classList.remove('show')
+
+                    document.getElementById('modal-body').innerText = data.message
+
+                    //Stop checking for synchronization complete
+                    clearInterval(checkUpdateComplete)
+                }
+              })
+              .catch(err=>console.log(err))
+            }
+          </script>
+        </li>
+      </ul>
+    </nav>
+    <div class="modal fade" id="syncdisable"></div>
+  </header>
+
+  <aside id="sidebar" class="sidebar">
+
+    <ul class="sidebar-nav" id="sidebar-nav">
+
+      <li class="nav-item">
+        <a class="nav-link " href="/home">
+          <i class="bi bi-grid"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="/send">
+          <i class="bi bi-menu-button-wide"></i><span>Send</span> </i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/transactions">
+          <i class="bi bi-menu-button-wide"></i><span>Transactions</span> </i>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="/blocks">
+          <i class="bi bi-bar-chart"></i><span>Blocks</span> </i>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="/contracts">
+          <i class="bi bi-gem"></i><span>Contracts</span> </i>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="/connect-node">
+          <i class="bi bi-person"></i>
+          <span>Connect to Node</span>
+        </a>
+      </li>
+      
+      <li class="nav-item">
+        <a class="nav-link" href="/profile">
+          <i class="bi bi-person"></i>
+          <span>Profile</span>
+        </a>
+      </li>
+    </ul>
+
+  </aside>
+
+  {% block subbody %}
+  {% endblock  %}
+{% endblock %}

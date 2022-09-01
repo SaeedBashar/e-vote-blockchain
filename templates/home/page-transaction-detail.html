@@ -1,0 +1,58 @@
+
+
+{% extends 'base.html' %}
+
+{% block head %}
+  <title>Transaction Detail</title>
+
+{%endblock%}
+
+{% block body%}
+<div class="container" style="margin-top:70px">
+    <a href="/transactions" class="btn btn-info btn-block">Back</a>
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3 col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Transaction</h5>
+    
+                  <!-- Multi Columns Form -->
+                  <form class="row g-3">
+                    <div class="col-md-12">
+                      <label for="inputName5" class="form-label">From Address</label>
+                      <input type="text" disabled class="form-control" id="inputName5" value="{{data['trans']['from_addr']}}">
+                    </div>
+                    <div class="col-md-12">
+                        <label for="inputName5" class="form-label">To Address</label>
+                        <input type="text" disabled class="form-control" id="inputName5" value="{{data['trans']['to_addr']}}">
+                      </div>
+                    <div class="col-md-6">
+                      <label for="inputEmail5" class="form-label">Value</label>
+                      <input type="email" disabled class="form-control" id="inputEmail5" value="{{data['trans']['value']}}">
+                    </div>
+                    <div class="col-md-6">
+                      <label for="inputPassword5" class="form-label">Gas</label>
+                      <input type="text" disabled class="form-control" id="inputPassword5" value="{{data['trans']['gas']}}">
+                    </div>
+                    <div class="col-12">
+                      <label for="inputAddress5" class="form-label">Timestamp</label>
+                      <input type="text" disabled class="form-control" id="inputAddres5s" placeholder="1234 Main St" value="{{data['trans']['timestamp']}}">
+                    </div>
+                    <div class="col-12">
+                      <label for="inputAddress2" class="form-label">Transaction Hash</label>
+                      <input type="text" disabled class="form-control" id="inputAddress2" value="{{data['trans']['tx_hash']}}" placeholder="Apartment, studio, or floor">
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                          <textarea disabled class="form-control" placeholder="Address" id="floatingTextarea" style="height: 100px;">{{data['trans']['args']}}</textarea>
+                          <label for="floatingTextarea"></label>
+                        </div>
+                    </div>
+                  </form>
+    
+                </div>
+              </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

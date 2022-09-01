@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-voting | candidates</title>
+</head>
+<body>
+    <style>
+       
+        body{
+            margin: 0;
+            padding: 0;
+            background-color: rgb(160, 158, 158)
+        }
+
+        .cards{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background-color: rgb(160, 158, 158);
+            border: none;
+            row-gap: 10px;
+            column-gap: 10px;
+            margin: 16px;
+            box-shadow: 10px 10px 8px rgba(0,0,0,0.3);
+        }
+
+        .can-card{
+            display: flex;
+            border-radius: 4px;
+            margin: 8px;
+            background-color: whitesmoke;
+            box-shadow: 10px 10px 8px rgba(0,0,0,0.3);
+        }
+        .container-img{
+            width: 60%;
+            padding: 0;
+            border-radius: 4px;
+        }
+
+        .can-card img{
+            width: 100%;
+            border-radius: 4px;
+        }
+
+        .cand-details{
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            display: flex;
+            width: 100%;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-start;
+            color: black;
+            font-weight: 700;
+            margin-left: 8px;
+            margin-top: 4px;
+            margin-bottom: 4px;
+            padding: 4px;
+            letter-spacing: 1.5pt;
+        }
+
+        .cand-details button{
+            background-color: green;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 8px 16px;
+            text-align: center;
+            width: 100%;
+            margin-top: 8px;
+            margin-right: 4px;
+            transition: box-shaddow, 0.15s;
+            transition: opacity, 0.15s;
+        }
+
+        .cand-details button:hover{
+            box-shadow: 8px 8px 8px rgba(0,0,0,0.3);
+            color: rgb(172, 166, 166);
+        }
+        .cand-details button:active{
+            opacity: 0.5;
+        }
+
+        @media(max-width:600px){
+            .cards{
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+        }
+
+    </style>
+    <div class="cards">
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+        <div class="can-card">
+            <div class="container-img"><img src="./hunger1.jpg" alt=""></div>
+            <div class="cand-details">
+                <div>Name</div>
+                <div>Portfolio</div>
+                <div>Ballot number</div>
+                <button>Cast Vote</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

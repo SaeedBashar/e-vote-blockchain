@@ -20,21 +20,18 @@ import time as tm
 from time import time
 from datetime import datetime as dt
 
-
-from src.blockchain import keygen
 from src.blockchain.transaction import Transaction
 from src.blockchain.block import Block
 from src.blockchain import miner
 from src.wallet.wallet import Wallet
-
-init_public_key = """-----BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC9NGmSYdh1s0OpYgiVWQ+YEdx6
-lSXm4b78fJrlBxbx7DoNXjuluX+KdIm6zzsb40HbTwBJT3n53BSC981Cx28z7tUp
-ujO3dSGt8rIQsitb5pl5yTgcaggyD/xYriNDZsU8sP2AdEUlLs2Xg/ap5OHII0dh
-hSQXq0JuWAJUFG0gqQIDAQAB
------END PUBLIC KEY-----"""
-
 from database.database import Database as db
+
+
+# Get and initialize the public key used for the initial transaction
+# ==================================================================
+path = Path('src/blockchain/data/blockchain.json')
+init_public_key = json.loads(path.read_text())['init_public_key']
+# ==================================================================
 
 
 class Blockchain:
@@ -42,7 +39,10 @@ class Blockchain:
 
         self.transactions = []
 
-        # Get and initialize transaction objects if some exist in the database
+        # Get and initialize transaction objects if some exist in the database.
+        # If some exist, the node was online before, else initialize the first
+        # transaction for a newly running node.
+        # ====================================================================
         return_data = db.get_data('transactions')
         if len(return_data) != 0:
             for tx in return_data:
@@ -50,28 +50,31 @@ class Blockchain:
                 self.transactions.append(tx_obj)
         else:
             if len(db.get_data('mined_transactions')) == 0:
+                
                 # Set the time to the begining of the year 2022 for initial transaction
-                t = dt.timestamp(dt(2022, 1, 1))
+                t = dt.timestamp(dt(2022, 1, 1))  
+                
                 self.initial_transaction = Transaction(None, init_public_key, 0, 0, ['Initial Blockchain Transaction'], t)
                 db.add_transaction(self.initial_transaction)
                 db.add_to_state(init_public_key)
+        # ====================================================================
         
 
-        # Initiliaze the difficulty and mining reward from databse.json file
-        # ==================================================================
+        # Initiliaze the difficulty and mining reward from data/database.json file
+        # ========================================================================
         path = Path('src/blockchain/data/blockchain.json')
         data = json.loads(path.read_text())
 
         self.difficulty = data['difficulty']
         self.reward = data['reward']
-        # ==================================================================
+        # ========================================================================
 
         self.chain = []
 
         self.miner_thread = None
 
         
-        self.contract_params = {}
+        self.contract_params = {}  
         c_res = db.get_data('contracts')
         if len(c_res) != 0:
             for c in c_res:
@@ -81,6 +84,9 @@ class Blockchain:
                 }
 
         # get and initiliaze block objects if some exist in the database
+        # If some exist, the node was online before, else create the 
+        # genesis block of the chain
+        # ==============================================================
         return_data = db.get_data('blocks')
         if len(return_data) != 0:
             for blk in return_data:
@@ -88,6 +94,7 @@ class Blockchain:
                 self.chain.append(blk_obj)
         else:
             self.create_genesis_block()
+        # ==============================================================
 
     def create_genesis_block(self):
         t = dt.timestamp(dt(2022, 1, 1))
@@ -106,6 +113,7 @@ class Blockchain:
 
     def start_miner(self, addr, send_nodes):
 
+        # Start a mining process on a new thread since 
         self.miner_thread = ThreadWithReturnValue(target=miner.mine, name='MinerThread', args=(self,))
         self.miner_thread.start()
 
@@ -199,6 +207,8 @@ class Blockchain:
 
     def add_transaction(self, trans, send_nodes, node_conn_exempt = None):
         if not trans['to_addr'] == None and trans['to_addr'][:2] != "SC":
+            # For transactions, that involove sending coin from one address to another
+
             if trans['from_addr'] != None: # if funds being transferred to another account
 
                 res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], [
@@ -277,7 +287,7 @@ class Blockchain:
                                 "message": "[FAILED], Not valid transaction"
                             }
             
-            else: # mining reward being giving to a miner
+            else: # if mining reward being giving to a miner
                 
                 balance = self.get_balance(trans['to_addr'])
                 tmp_tx = Transaction(
@@ -307,7 +317,8 @@ class Blockchain:
                     "message": "[SUCCESS] Transaction made successfully"
                 }
         
-        elif trans['to_addr'] == None:
+        elif trans['to_addr'] == None:  
+            # For transactions initiating contract on the network
 
             res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], trans['sign_data'])
 
@@ -345,7 +356,7 @@ class Blockchain:
                     db.update_state_obj(0, contract_tx)
 
                     state = db.get_data('contracts-states')[trans['contract_addr']]
-                    return_state = c_module.contract(action='init', state = state)
+                    return_state = c_module.contract(action=trans['action'], state = state)
                     db.update_state_cont(trans['contract_addr'], return_state)
                     
                     # Stores the start and end time of each contract
@@ -369,7 +380,8 @@ class Blockchain:
                 
             return {'status': False, 'message': 'Transaction verification failed'}
 
-        elif trans['to_addr'][:2] == 'SC':
+        elif trans['to_addr'][:2] == 'SC':  
+            # For transactions with a contract addresss
 
             res = Wallet.verify_transaction(
                 trans['signature'],
@@ -397,7 +409,7 @@ class Blockchain:
                     
                     state = db.get_data('contracts-states')[trans['to_addr'][2:]]
 
-                    return_state = c_module.contract(action='vote_cast', state = state, args = trans['args'])
+                    return_state = c_module.contract(action=trans['action'], state = state, args = trans['args'])
                     db.update_state_cont(trans['to_addr'][2:], return_state)
                     tmp_tx = Transaction(
                                                 trans['from_addr'],
@@ -484,6 +496,10 @@ class Blockchain:
         return bal
 
 
+# The join method of the thread module in python does not return any value
+# This class inherits from it, and modify the join method to return a value
+# Used in the miner method of the blockchain class to start a mining thread
+# =========================================================================
 class ThreadWithReturnValue(Thread):
             def __init__(self, group=None, target=None, name=None,
                         args=(), kwargs={}, Verbose=None):
@@ -498,7 +514,7 @@ class ThreadWithReturnValue(Thread):
                 return self._stop.isSet()
 
             def run(self):
-                print(type(self._target))
+                # print(type(self._target))
                 if self._target is not None:
                     self._return = self._target(*self._args,
                                                         **self._kwargs)
@@ -506,3 +522,4 @@ class ThreadWithReturnValue(Thread):
             def join(self, *args):
                 Thread.join(self, *args)
                 return self._return
+# =========================================================================

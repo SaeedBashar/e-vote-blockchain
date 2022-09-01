@@ -1,0 +1,200 @@
+{% extends 'base-logged-in-pages.html' %}
+
+{% block head %}
+  <title>Node Connection</title>
+
+{%endblock%}
+
+{% block subbody%}
+<main class="main" id="main">
+<div class="container" style="margin-top:70px">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Connect to a Node</h5>
+    
+                    <form class="row g-3">
+                        <div class="col-md-12">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="address" placeholder="eg. 127.0.0.1">
+                            <label for="address">Node Address</label>
+                        </div>
+                        </div>
+                        <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="port" placeholder="eg. 8080">
+                            <label for="port">Node Port</label>
+                        </div>
+                        </div>
+                        
+                        <div class="text-right">
+                        <button type="button" onclick="submitVals()" class="btn btn-primary">Submit</button>
+                        <button type="reset" class="btn btn-secondary">Reset</button>
+                        </div>
+                    </form>
+                    <script type='text/javascript'>
+
+                        function getEl(el){
+                            return document.getElementById(el)
+                        }
+
+                        function submitVals(){
+                            let addr = getEl('address').value
+                            let port = getEl('port').value
+
+                            data = {
+                                'address': addr,
+                                'port': port
+                            }
+                            fetch('/connect-node', {
+                                method: "POST",
+                                mode: "cors",
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            })
+                            .then(data=>data.json())
+                            .then(data=>{
+                                console.log(data)
+                                if (data.status == true){
+                                  el = document.getElementById('outnodeRows')
+                                  el.innerHTML += `
+                                                  <tr>
+                                                    <th scope='row'> # </th>
+                                                    <td> ${addr} </td>
+                                                    <td> ${port} </td>
+                                                    <td> ${data.public_key} </td>
+                                                  </tr>
+                                                `
+                                }
+                            })
+                            .catch(err=>console.log(err))
+
+                        }
+                        
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+          <div class="pagetitle">
+              <h1>Connected Outbound Nodes</h1>
+          </div><!-- End Page Title -->
+        
+          <section class="section">
+              <div class="row">
+                <div class="col-lg-12">
+                  <div class="card">
+                    <div class="card-body">
+                      <table class="table datatable">
+                        <thead>
+                          <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Address</th>
+                            <th scope="col">Port</th>
+                            <th scope="col">Public Key</th>
+                          </tr>
+                        </thead>
+                        <tbody id="outnodeRows">
+                          {% set i = 1%}
+                          {% for n in data['out_nodes'] %}
+                            <tr>
+                              <th scope='row'> {{i}} </th>
+                              <td> {{n['address']}} </td>
+                              <td> {{n['port']}} </td>
+                              <td> {{n['public_key']}} </td>
+                            </tr>
+                            {% set i = i + 1%}
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                      <script>
+                          /*temp = ``
+                          index = 1
+                          for(let n of data['out_nodes']){
+                              temp += `
+                                      <tr>
+                                          <th scope='row'> ${index} </th>
+                                          <td> ${n['address']} </td>
+                                          <td> ${n['port']} </td>
+                                          <td> ${n['pk']} </td>
+                                      </tr>
+                                      `
+                              index++
+                          }
+                          el = document.getElementById('innodeRows')
+                          el.innerHTML += temp*/
+                      </script>
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </section>  
+      </div>    
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+            <div class="pagetitle">
+                <h1>Connected Inbound Nodes</h1>
+            </div><!-- End Page Title -->
+          
+            <section class="section">
+                <div class="row">
+                  <div class="col-lg-12">
+                    <div class="card">
+                      <div class="card-body">
+                        <table class="table datatable">
+                          <thead>
+                            <tr>
+                              <th scope="col">#</th>
+                              <th scope="col">Address</th>
+                              <th scope="col">Port</th>
+                              <th scope="col">Public Key</th>
+                            </tr>
+                          </thead>
+                          <tbody id="innodeRows">
+                            {% set i = 1%}
+                            {% for n in data['in_nodes'] %}
+                              <tr>
+                                <th scope='row'> {{i}} </th>
+                                <td> {{n['address']}} </td>
+                                <td> {{n['port']}} </td>
+                                <td> {{n['public_key']}} </td>
+                              </tr>
+                              {% set i = i + 1 %}
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                        <script>
+                            /*temp = ``
+                            index = 1
+                            for(let n of data['in_nodes']){
+                                temp += `
+                                        <tr>
+                                            <th scope='row'> ${index} </th>
+                                            <td> ${n['address']} </td>
+                                            <td> ${n['port']} </td>
+                                            <td> ${n['pk']} </td>
+                                        </tr>
+                                        `
+                                index++
+                            }
+                            el = document.getElementById('innodeRows')
+                            el.innerHTML += temp*/
+                        </script>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </section>  
+        </div>    
+    </div>
+</div>
+</main>
+{% endblock %}

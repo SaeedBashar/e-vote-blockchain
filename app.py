@@ -12,7 +12,6 @@ from time import time
 from datetime import datetime as dt
 
 from src.blockchain_node.node import Node
-from src.blockchain import keygen
 from src.wallet.wallet import Wallet
 from database.database import Database as db
 from api.api import API as api
@@ -354,6 +353,7 @@ def get_contract_result():
     
     return jsonify(response
     )
+
 @app.route('/connect-node', methods=['GET', 'POST'])
 def connect_node():
     if 'u_name' in session:

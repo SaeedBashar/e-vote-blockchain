@@ -62,7 +62,8 @@ def submit_transaction():
         transaction['args'].append(time_voted)
         
         transaction['signature'] = x['signature']
-
+        transaction['action'] = 'vote_cast'
+        
         transaction['sign_data'] = [
             x['user_name'],
             x['user_id']    

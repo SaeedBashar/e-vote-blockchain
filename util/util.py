@@ -1,6 +1,5 @@
 import binascii
 import json
-from turtle import rt
 from database.database import Database as db
 from flask import request
 from datetime import datetime as dt

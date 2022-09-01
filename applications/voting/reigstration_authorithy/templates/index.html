@@ -1,0 +1,158 @@
+
+  {% extends 'base-logged-in-pages.html' %}
+
+  {% block head %}
+    <title>Registration Authority</title>
+   
+  {%endblock%}
+
+  {% block subbody%}
+
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <h1>Dashboard</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="active mr-3"><button onclick="document.getElementById('id02').style.display='block'">Add Portfolio</button></li>
+          <li class="active"><button onclick="document.getElementById('id01').style.display='block'">Add A Candidate</button></li>
+        </ol>
+      </nav>
+    </div>
+    <div id="id02" class="cus-modal bg-dark animate" style="margin-top:65px;margin-left: 300px; width: 400px;height:400px;padding:10px">
+      <div class="imgcontainer">
+        <span style="color: white" onclick="document.getElementById('id02').style.display='none'" class="close" title="Close Modal">&times;</span>
+      </div>
+      <label for="" style="color: white;font-size: 25px">Portfolio</label>
+      <input type="text" id='newP' value="" class="form-control">
+      <button onclick="addPortfolio()">Add</button>
+    </div>
+    <div id="id01" class="cus-modal" style="margin-left: 300px;width:80%">
+      <form class="cus-modal-content animate">
+        <div class="imgcontainer">
+          <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
+          <h2>NEW CANDIDATE</h2>
+        </div>
+    
+        <div class="container">
+          <div class="col-12">
+            <label for="inputEmail4" class="form-label">Candidate Name</label>
+            <input type="name" class="form-control" id="name">
+          </div>
+          <div class="row mt-3 mb-3" style="padding-left: 15px; padding-right: 15px">
+            <div class="col-6">
+              <label for="inputEmail4" class="form-label">Portfolio</label>
+              <select id="portfolio" name="portfolio" class="form-select">
+                {% for p in data['portfolio'] %}
+                  <option value="{{p}}">{{p}}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="inputEmail4" class="form-label">Age</label>
+              <input type="number" name="age" class="form-control" id="age">
+            </div>
+          </div>
+          <div class="col-12 mt-3 mb-3">
+            <input type="file" name="cand_img" id="cand_img" class="form-control">
+          </div>
+          <div class="col-12">
+            <div class="form-floating">
+              <textarea class="form-control" name="description" placeholder="Address" id="description" style="height: 100px;"></textarea>
+              <label for="inputEmail4" class="form-label">Description</label>
+            </div>
+          </div>
+          <button type="button" onclick="addCandidate()">Add To Candidates</button>
+        </div>
+      </form>
+    </div>
+    <script>
+      function getEl(el){
+        return document.getElementById(el)
+      }
+      function addCandidate(){
+        let data = {
+          name : getEl('name').value,
+          age : getEl('age').value,
+          description : getEl('description').value,
+          portfolio : getEl('portfolio').value
+        }
+        console.log(data)
+        fetch('/add-candidate',{
+          method: "POST",
+          mode: "cors",
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+        .then(x=>x.json())
+        .then(x=>{
+          t = document.getElementById('table-' + x.portfolio)
+          t.innerHTML += `
+            <tr>
+              <td>${x.id}</td>
+              <td>${x.name}</td>
+              <td>${x.description}</td>
+              <td>${x.age}</td>
+            </tr>
+          `
+          document.getElementById('id01').style.display='none'
+        })
+        .catch(e=>console.log(e))
+      }
+      function addPortfolio(){
+        val = getEl('newP').value.toLowerCase()
+        if(val != ""){
+          data = {
+            'portfolio': val
+          }
+          fetch('/add-portfolio',{
+            method: "POST",
+            mode: "cors",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+          })
+          .then(x=>x.json())
+          .then(x=>{
+            console.log(x);
+            document.getElementById('id02').style.display='none'
+            p = getEl('portfolio')
+            p.innerHTML += `<option>${val}</option>`
+          })
+          .catch(e=>console.log(e))
+        }
+      }
+    </script>
+
+    <div id="body" class="body">
+      {% for p in data['portfolio']%}
+        <div id="{{p}}" style="margin: 40px auto">
+          <h3 style="text-transform: capitalize">{{p}}</h3>
+          <table id="table-{{p}}" class="customers">
+            <tr>
+              <th>Id</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Age</th>
+            </tr>
+            {% for i in data['candidates']%}
+              {%if i['portfolio'] == p %}
+                <tr>
+                  <td>{{i['id']}}</td>
+                  <td>{{i['name']}}</td>
+                  <td>{{i['desc']}}</td>
+                  <td>{{i['age']}}</td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    </div>
+  </main>
+  
+  {%endblock%}

@@ -144,6 +144,7 @@ def start_election():
         }
         transaction['args'].append(contract_params)
         transaction['contract_addr'] = get_election_addr(transaction['args'][0])
+        transaction['action'] = "init"
 
         # Signing the transaction using the contract the address
         # ===================================================

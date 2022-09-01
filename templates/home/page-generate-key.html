@@ -1,0 +1,122 @@
+
+  {% extends 'base.html' %}
+
+  {% block head %}
+    <title>Key Generation</title>
+   
+  {%endblock%}
+
+  {% block body%}
+
+    <main>
+      <div class="container">
+
+        <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
+          <div class="container">
+            <div class="row justify-content-center">
+              <div class="col-lg-6 col-md-8 d-flex flex-column align-items-center justify-content-center">
+
+                <div class="d-flex justify-content-center py-4">
+                  <a href="#" class="logo d-flex align-items-center w-auto">
+                    <span class="d-none d-lg-block">Bockchain</span>
+                  </a>
+                </div><!-- End Logo -->
+
+                <div class="card mb-3">
+
+                  <div class="card-body">
+
+                    <div class="pt-4 pb-2">
+                      <h5 class="card-title text-center pb-0 fs-4">Generate A Wallet For Your Account</h5>
+                      <p class="text-center small" style="color: red;font-weight: bold;">
+                        Please make sure your private key stays hidden from everyone!!
+                      </p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                        <!--<h5 class="card-title">With captions</h5>-->
+
+                        <!-- Slides with captions -->
+                        <div id="carouselExampleCaptions" class="carousel slide carousel-fade" data-bs-touch="false" data-bs-interval="false">
+                                <div class="carousel-inner">
+                                  <div class="carousel-item active">
+                                      <img src="{{url_for('static', filename='assets/img/cain.jfif')}}" class="d-block w-100" alt="...">
+                                      <div class="carousel-caption d-none d-md-block" style="top:65px">
+                                        <p>
+                                          <button type="button" class="btn btn-info btn-lg btn-block" onclick="gen_key()" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="1" aria-label="Slide 2">
+                                            GENERATE KEYS
+                                          </button>
+                                          <script>
+                                            function gen_key(){
+                                              fetch('/generate')
+                                              .then(d=>d.json())
+                                              .then(d=>{
+                                                if('private_key' in d){
+                                                  priv_key = document.getElementById('privateKey')
+                                                  pub_key = document.getElementById('publicKey')
+
+                                                  priv_key.innerText = d['private_key']
+                                                  pub_key.innerText = d['public_key']
+                                                }else{
+                                                  el = document.getElementById('genError')
+                                                  el.innerText = d['message']
+                                                  
+                                                  el.classList.remove('hide')
+                                                  el.classList.add('show')
+                                                }
+                                              })
+                                              .catch(e=>console.log(e))
+                                            }
+                                          </script>
+                                        </p>
+                                        <h5 style="color: #1d1d25;font-family: cursive;font-size: 22px;">
+                                          Private &amp; Public Keys
+                                        </h5>
+                                      </div>
+                                  </div>
+                                  <div class="carousel-item">
+                                      <img src="{{url_for('static', filename='assets/img/cain.jfif')}}" class="d-block w-100" alt="...">
+                                      <div id="genError" class="alert alert-danger alert-dismissible fade hide" role="alert">
+                                        A simple danger alert—check it out!
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                      </div>
+                                      <div class="carousel-caption d-none d-md-block" style="top:-5px">
+                                        <div class="mb-3">
+                                          <label for="exampleFormControlTextarea1" class="form-label">Private Key</label>
+                                          <textarea class="form-control" name='privateKey' id="privateKey" rows="4"></textarea>
+                                          <button class="btn btn-info m-3" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="2" aria-label="Slide 3">Next</button>
+                                        </div>
+                                      </div>
+                                  </div>
+                                  <div class="carousel-item">
+                                      <img src="{{url_for('static', filename='assets/img/cain.jfif')}}" class="d-block w-100" alt="...">
+                                      <div id="genError" class="alert alert-danger alert-dismissible fade hide" role="alert">
+                                        A simple danger alert—check it out!
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                      </div>
+                                      <div class="carousel-caption d-none d-md-block" style="top:-5px">
+                                        <div class="mb-3">
+                                          <label for="exampleFormControlTextarea1" class="form-label">Public Key</label>
+                                          <textarea class="form-control" name='publicKey' id="publicKey" rows="4"></textarea>
+                                          <a href="/home" class="btn btn-info m-3">Next</a>
+                                        </div>
+                                      </div>
+                                  </div>
+                                </div>
+                            </div><!-- End Slides with captions -->
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+    </main><!-- End #main -->
+
+  {%endblock%}
