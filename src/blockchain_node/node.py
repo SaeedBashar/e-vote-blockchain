@@ -1,10 +1,13 @@
 
 import binascii
 import math
+import os
 import socket
 from sre_parse import State
+import sys
 import time
 from turtle import isvisible
+from xml.sax import parseString
 
 import Crypto
 import Crypto.Random
@@ -224,100 +227,51 @@ class Node(threading.Thread):
                 return_data = self.blockchain.add_block(n_block)
 
                 if return_data['status']:
+                    if node_conn != None:   # 'node_conn != None' bcos route is
+                                            # also used by 'CHAIN_RESPONSE' route, which
+                                            # does not required node_conn
                    
-                    data = {'type': 'NEW_BLOCK_REQUEST', 'block': return_data['new_block'].block_item}
-                    self.send_to_nodes(data, [node_conn.pk])
-                    self.enable_mining = False
+                        data = {'type': 'NEW_BLOCK_REQUEST', 'block': return_data['new_block'].block_item}
+                        self.send_to_nodes(data, [node_conn.pk])
+                        self.enable_mining = False
+                    return  {'status': True}
+                else:
+                    return  {'status': False}
 
             elif data['type'] == 'CHAIN_REQUEST':
-                for i, b in enumerate(self.blockchain.chain):
+
+                start_from = int(data['start_index']) if data['start_index'] != None else 0
+
+                for i, b in list(enumerate(self.blockchain.chain))[start_from:]:
                     response_data = {
                         'type': 'CHAIN_RESPONSE',
-                        'finished': i == len(self.blockchain.chain) - 1,
+                        'finished': i + start_from == len(self.blockchain.chain) - 1,
                         'block': b.block_item
                     }
 
                     node_conn.send(response_data, compression='bzip2')
             
             elif data['type'] == 'CHAIN_RESPONSE':
-                if self.enable_chain_request:
-                    n_block = data['block']
-                    tmp_txs = []
+                temp = data['block'].copy()
+                data['type'] = 'NEW_BLOCK_REQUEST'
+                res = self.node_message(None, data['block'])
+                temp['data'] = json.loads(str(temp['data']))
 
-                    for tx in n_block['data']:
-                        if Transaction.is_valid(tx):
-                            tmp =  Transaction(
-                                    tx['from_addr'],
-                                    tx['to_addr'],
-                                    tx['value'],
-                                    tx['gas'],
-                                    tx['args'],
-                                    tx['timestamp']
-                                )
-                            tmp.tx_hash = tx['tx_hash']
-                            tmp.set_transaction()
+                # Convert transactions in block into json objects
+                for tx in temp['data']:
+                    tx['args'] = ast.literal_eval(tx['args'])
 
-                            tmp_txs.append(tmp)
-                            db.add_to_mined_tx(n_block['index'], tmp)
-                    
-                    
-                    tmp_block = Block(
-                        n_block['index'],
-                        n_block['timestamp'],
-                        tmp_txs,
-                        n_block['prev_hash'],
-                        n_block['difficulty']
-                    )
-                    tmp_block.hash = n_block['hash']
-                    tmp_block.merkle_root = n_block['merkle_root']
-                    tmp_block.nonce = n_block['nonce']
-                    tmp_block.prev_hash = n_block['prev_hash']
-                    tmp_block.set_block()
+                if not data['finished']:
+                    if res['status'] == True:
+                        self.process_transactions(temp['data'])
+                else:
+                    if res['status'] == True:
+                        self.process_transactions(temp['data'])
+                        request_data = {
+                                    'type': 'NON_MINED_TRANSACTION_REQUEST'
+                                }
+                        node_conn.send(request_data, compression='bzip2')
 
-                    if not data['finished']:
-                        self.temporary_chain.append(tmp_block)
-                    else:
-                        self.temporary_chain.append(tmp_block)
-
-                        is_chain_valid = True
-                        dif = 4
-
-                        for i in range(1, len(self.temporary_chain) - 1):
-                            cur_block = self.temporary_chain[i]
-                            pre_block = self.temporary_chain[i-1]
-
-                         
-                            if not Block.is_valid(cur_block.block_item, pre_block.block_item):
-                                is_chain_valid = False
-
-
-                            # if is_chain_valid:
-                            #     if int(n_block['index']) % 100 == 0:
-                            #         dif = math.ceil(self.difficulty * 100 * self.block_time / (int(n_block['timestamp']) - int(self.chain[len(self.chain)-99].timestamp)))
-
-                            # else:
-                            #     break
-
-                        if is_chain_valid:
-                            self.blockchain.chain = self.temporary_chain
-                            self.blockchain.difficulty = self.temporary_chain[-1].difficulty
-
-                            
-                            request_data = {
-                                'type': 'NON_MINED_TRANSACTION_REQUEST'
-                            }
-                            node_conn.send(request_data, compression='bzip2')
-
-                            request_data = {
-                                'type': 'STATE_REQUEST'
-                            }
-                            node_conn.send(request_data, compression='bzip2')
-                            
-                            self.temporary_chain = []
-                            self.enable_chain_request = False
-                        else:
-                            self.log("[INVALID] Chain is invalid")
-                            
             elif data['type'] == 'CHAIN_LENGTH_REQUEST':
                 
                 chain_len = len(self.blockchain.chain)
@@ -393,40 +347,43 @@ class Node(threading.Thread):
                     db.add_to_mined_tx(t_item['block_index'], tmp)
 
             elif data['type'] == 'NON_MINED_TRANSACTION_REQUEST':
-                tmp_txs = []
-                r_data = db.get_data('transactions')
-                for tx in r_data:
-                    tmp_txs.append({
-                        "from_addr": tx[0],
-                        "to_addr": tx[1],
-                        "value": tx[2],
-                        "gas": tx[3],
-                        "args": json.loads(tx[4]),
-                        "timestamp": tx[5],
-                        "tx_hash": tx[6]
-                    })
                 
                 request_data = {
                                 'type': 'NON_MINED_TRANSACTION_RESPONSE',
-                                'transactions': tmp_txs
+                                'transaction': None
                             }
-                node_conn.send(request_data, compression='bzip2')
 
-            elif data['type'] == 'NON_MINED_TRANSACTION_RESPONSE':
-                for t_item in data['transactions']:
-                    tmp = Transaction(
-                                    t_item['from_addr'],
-                                    t_item['to_addr'],
-                                    t_item['value'],
-                                    t_item['gas'],
-                                    t_item['args'],
-                                    t_item['timestamp']
-                                )
-                    tmp.tx_hash = t_item['tx_hash']
+                tmp_txs = db.get_data('transactions')
+                for tx in tmp_txs:
+                    tx = list(tx)
+                    tx[4] = ast.literal_eval(tx[4])
+                    tx[5] = float(tx[5])
+
+                    tmp = Transaction(tx[0], tx[1], tx[2], tx[3], tx[4], tx[5])
+                    tmp.tx_hash = tx[6]
                     tmp.set_transaction()
 
-                    self.blockchain.transactions.append(tmp)
-                    db.add_transaction(tmp)
+                    request_data['transaction'] = tmp.tx_item
+                    node_conn.send(request_data, compression='bzip2')
+
+            elif data['type'] == 'NON_MINED_TRANSACTION_RESPONSE':
+                trans = data['transaction']
+                trans['args'] = ast.literal_eval(str(trans['args']))
+                tmp = Transaction(
+                                trans['from_addr'],
+                                trans['to_addr'],
+                                trans['value'],
+                                trans['gas'],
+                                trans['args'],
+                                trans['timestamp']
+                            )
+                tmp.tx_hash = trans['tx_hash']
+                tmp.set_transaction()
+
+                self.blockchain.transactions.append(tmp)
+                db.add_transaction(tmp)
+
+                self.process_transactions([tmp.tx_item])
 
         self.log("[RECEIVED MESSAGE]: Data from node %s:[%s]" % (node_conn.address, str(data)))
 
@@ -455,6 +412,9 @@ class Node(threading.Thread):
     
     def sync_chain(self):
         try:
+
+            # Add all uniques node connections in network list
+            # ================================================
             network = []
             for n in self.nodes_inbound + self.nodes_outbound:
                 for nd in network:
@@ -462,6 +422,8 @@ class Node(threading.Thread):
                         break
                 else:
                     network.append(n)
+            # ================================================
+            
                 
             if len(network) != 0:
                 for conn in network:
@@ -473,7 +435,7 @@ class Node(threading.Thread):
                 node_with_longest_chain = max(self.length_response, key=lambda x : int(x['length']))
                 
                 if len(self.blockchain.chain) < int(node_with_longest_chain['length']):
-                    request_data = {'type':'CHAIN_REQUEST'}
+                    request_data = {'type':'CHAIN_REQUEST', 'start_index': len(self.blockchain.chain)}
                     node_with_longest_chain['node_conn'].send(request_data)
                     return {'status': True, 'message': 'Sychronization has began...!!!\nPlease wait while all required data are being updated.'}
                 
@@ -553,3 +515,99 @@ class Node(threading.Thread):
         time.sleep(3)
         self.sock.close()
         self.log("[TERMINATED] Node stopped...")
+
+    # Method used by 'CHAIN_RESPONSE' and 'NON_MINED_TRANSACTION' route 
+    # to add transaction when a node request for a synchronization
+    # ==================================================================
+    def process_transactions(self, transactions):        
+        for tx in transactions:
+            if (not tx['to_addr'] == None and tx['to_addr'][:2] != "SC"):
+                if tx['from_addr'] != None:
+                    db.add_to_state(tx['from_addr'])
+                    db.add_to_state(tx['to_addr'])
+
+                    balance = self.blockchain.get_balance(tx['from_addr'])
+                    balance = balance - int(tx['value']) - int(tx['gas'])
+                    tmp_tx = Transaction(
+                                tx['from_addr'],
+                                tx['to_addr'],
+                                tx['value'],
+                                tx['gas'],
+                                tx['args'],
+                                tx['timestamp']
+                            )
+                    
+                    tmp_tx.set_transaction()
+                    db.update_state_obj(balance, tmp_tx)
+
+                else:
+                    db.add_to_state(tx['to_addr'])
+                    balance = self.get_balance(tx['to_addr'])
+                    tmp_tx = Transaction(
+                                                tx['from_addr'],
+                                                tx['to_addr'],
+                                                tx['value'],
+                                                tx['gas'],
+                                                tx['args'],
+                                                tx['timestamp']
+                                            )
+                    
+                    tmp_tx.set_transaction()
+                    db.update_state_obj(balance, tmp_tx)
+            elif tx['to_addr'] == None:
+                BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                contract_path = os.path.join(BASE_DIR, "..", "blockchain", "contracts\{}.py".format(trans['contract_addr']))
+
+                path = Path(contract_path)
+                if not path.exists():
+                    path.write_text(tx['args'][0])
+
+                # status = db.add_to_state(trans['contract_addr'])
+                tmp_tx = Transaction(
+                                            tx['from_addr'],
+                                            tx['to_addr'],
+                                            tx['value'],
+                                            tx['gas'],
+                                            tx['args'],
+                                            tx['timestamp']
+                                        )
+                
+                tmp_tx.set_transaction()
+
+                status = db.update_state_obj(tx['value'], tmp_tx)
+                if status:
+                    import imp
+
+                    fp, path, desc = imp.find_module(str(tx['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
+                    c_module = imp.load_module(str(tx['contract_addr']), fp, path, desc)
+                    sys.modules[tx['contract_addr']] = c_module
+
+                    contract_tx = Transaction(tx['contract_addr'], None, 0, 0)
+                    db.update_state_obj(0, contract_tx)
+
+                    state = db.get_data('contracts-states')[tx['contract_addr']]
+                    return_state = c_module.contract(action=tx['action'], state = state)
+                    db.update_state_cont(tx['contract_addr'], return_state)
+                    
+                    # Stores the start and end time of each contract
+                    self.blockchain.contract_params[tx['contract_addr']] = tx['args'][1]
+                    db.add_contract_info((
+                                            tx['contract_addr'], 
+                                            tx['args'][1]['start_time'], 
+                                            tx['args'][1]['end_time']
+                                        ))
+            elif tx['to_addr'][:2] == 'SC':
+
+                import imp
+
+                BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                fp, path, desc = imp.find_module(tx['to_addr'][2:], path=[os.path.join(BASE_DIR, "..", "blockchain", "contracts")])
+                c_module = imp.load_module(tx['to_addr'][2:], fp, path, desc)
+                
+                state = db.get_data('contracts-states')[tx['to_addr'][2:]]
+
+                return_state = c_module.contract(action=tx['action'], state = state, args = tx['args'])
+                db.update_state_cont(tx['to_addr'][2:], return_state)
+            else:
+                pass
+        

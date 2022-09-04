@@ -30,3 +30,7 @@ class API:
         elif arg == 'contract':
             addr = request.args.get('address', None)
             return get_contract(addr)
+
+        elif arg == 'contract-transactions':
+            addr = request.args.get('address', None)
+            return get_contract_transactions(addr)

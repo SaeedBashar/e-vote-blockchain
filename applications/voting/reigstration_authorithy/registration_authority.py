@@ -38,12 +38,13 @@ def cxt_proc():
     def toUpper(el):
         return str(el).upper()
     
-    def percent(el):
-        
-                
+    def percent(el):  
         return str((el/ELECTION_INFO['result']['total_votes']) * int(100))
+
+    def toStr(el):
+        return str(el)
     
-    return {'upper': toUpper, 'percent': percent}
+    return {'upper': toUpper, 'percent': percent, 'toStr': toStr}
 
 @app.route('/')
 def index():
@@ -81,10 +82,19 @@ def home():
 @app.route('/add-candidate', methods=['POST'])
 def add_candidate():
     if 'name' in session:
-        c_name = request.get_json()["name"]
-        c_portfolio = request.get_json()["portfolio"]
-        c_age = request.get_json()["age"]
-        c_desc = request.get_json()["description"]
+
+        data = request.get_json()
+        c_name = data["name"]
+        c_portfolio = data["portfolio"]
+        c_age = data["age"]
+        c_desc = data["description"]
+        c_img = data['imgByte']
+
+        if c_img != None:
+            path = Path('database/cand_imgs.json')
+            data = json.loads(path.read_text())
+            data[c_name.replace(' ', '')] = c_img
+            path.write_text(json.dumps(data))
 
         cand_l = len(ELECTION_INFO['candidates'])
         ELECTION_INFO['candidates'].append({
@@ -114,10 +124,11 @@ def add_portfolio():
         return {'status': True}
     return redirect('/login')
 
-@app.route('/start-election')
+@app.route('/start-election', methods=['POST'])
 def start_election():
     if 'name' in session:
         print('starting election...')
+        req_data = request.get_json()
         transaction = {}
         transaction['from_addr'] = format_key_for_api(get_key()['public_key'])
         transaction['to_addr'] = None
@@ -132,11 +143,14 @@ def start_election():
             transaction['args'].append(inp.read())
             # exec(transaction['args'][0], {'__builtins__': __builtins__}, {'name': 'Ben'})
         
-        d1 = dt.now()
-        d2 = dt(d1.year, d1.month, d1.day, d1.hour, d1.minute + 5, d1.second, d1.microsecond)
+        # d1 = dt.now()
+        # d2 = dt(d1.year, d1.month, d1.day, d1.hour, d1.minute + 5, d1.second, d1.microsecond)
+        
+        # t1 = dt.timestamp(d1)
+        # t2 = dt.timestamp(d2)
 
-        t1 = dt.timestamp(d1)
-        t2 = dt.timestamp(d2)
+        t1 = float(req_data['start_date'])
+        t2 = float(req_data['end_date'])
 
         contract_params = {
             'start_time': t1,
@@ -163,6 +177,31 @@ def start_election():
         print(response.json())
         return response.json()
     return redirect('/login')
+
+@app.route('/get-contract-transactions')
+def get_cont_transactiosn():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
+    with codecs.open(file_path,encoding='utf8',mode='r') as inp:
+        data = inp.read()
+
+    addr =  get_election_addr(data)
+    
+    response = requests.get('http://127.0.0.1:4000/api/contract-transactions?address=%s' %addr)
+    response = response.json()
+    
+    c_names = []
+    for x in ELECTION_INFO['candidates']:
+        c_names.append({
+            'id': x['id'],
+            'name': x['name']
+        })
+
+    data = {
+        'transactions': response,
+        'c_names': c_names 
+    }
+    return render_template('contract-transactions.html', data=data)
 
 @app.route('/check-results')
 def check_results():
@@ -258,24 +297,6 @@ def logout():
 
     return redirect('/')
 
-# @app.route('/get-info', methods=['POST'])
-# def get_info():
-#     res = request.get_json()['addr']
-#     election_authorities.add(res)
-
-#     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#     file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
-#     with codecs.open(file_path,encoding='utf8',mode='r') as inp:
-#         data = inp.read()
-
-#     data = {
-#         'public_key': get_key()['public_key'],
-#         'nodes': miner_nodes,
-#         'contract_addr': get_election_addr(data)
-#     }
-
-    return jsonify(data)
-
 @app.route('/user-transaction', methods=['POST'])
 def user_vote():
     data = request.get_json()
@@ -287,21 +308,22 @@ def user_vote():
 @app.route('/user-login', methods=['POST'])
 def auth_login():
     x = request.get_json()
-    r_data = db.get_user((x['username'], x['password']))
+    r_data = db.get_user((x['username'].lower(), x['password']))
     
     if len(r_data) != 0:  # Check if is an eligible voter
         if r_data[0][3] == 0: # Check if he/she has voted already
             if r_data[0][2] == None: # Check if he/she has an id
                 userId = Crypto.Random.new().read(64).hex()
                 db.insert_voter_id(userId, (x['username'], x['password']))
-                r_data[0][2] = userId
-            db.verify_user(r_data[0][2])
-            return jsonify({'status': True, 'id': r_data[0][2]})
+            else:
+                userId = r_data[0][2] 
+            db.verify_user(userId)
+            print(r_data[0][2])
+            return jsonify({'status': True, 'id': userId})
         else:
             return jsonify({'status': True, 'message': 'You have already voted'})
     else:
         return jsonify({'status': False, 'message': 'You are not eligible to vote'})
-
 
 @app.route('/user-get-info', methods=['POST'])
 def user_get_info():
@@ -318,7 +340,18 @@ def user_get_info():
             file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
             with codecs.open(file_path,encoding='utf8',mode='r') as inp:
                 data = inp.read()
-                
+            
+
+            candidates = ELECTION_INFO['candidates']
+            
+            path = Path('database/cand_imgs.json')
+            c_imgs = json.loads(path.read_text())
+
+            for i, c in enumerate(candidates):
+                if c['name'].replace(' ', '') in c_imgs:
+                    ELECTION_INFO['candidates'][i]['img'] = c_imgs[c['name'].replace(' ', '')]
+
+
             return {
                 'status': True,
                 'signature': sign_ballot((user[0], user[1]), hasId),
@@ -430,4 +463,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='127.0.0.1', port=port, debug = True, threaded = True)
+    app.run(host='127.0.0.1', port=port, debug=True, threaded = True)

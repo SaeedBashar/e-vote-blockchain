@@ -134,8 +134,9 @@ class Blockchain:
 
     def add_block(self, n_block):
 
-        if n_block['prev_hash'] != self.chain[-1].prev_hash:
+        if n_block['prev_hash'] != self.chain[-1].prev_hash: # If node already has the new block
             
+            # Convert transactions in block into json objects
             for tx in n_block['data']:
                 tx['args'] = ast.literal_eval(tx['args'])
             

@@ -145,6 +145,18 @@ def get_contract(addr):
 
     return {'status': False, 'message': 'No Such Contract!!'}
 
+def get_contract_transactions(addr):
+    cont_txs = []
+
+    cont_txs.extend(get_transactions())
+
+    cont_txs.extend(get_mined_transactions())
+
+    cont_txs = list(filter(lambda tx: tx['to_addr'] != None, cont_txs))
+    cont_txs = list(filter(lambda tx: tx['to_addr'][2:] == addr, cont_txs))
+
+    return cont_txs
+
 def format_key_for_display(key, type='pub'):
     if key != None:
         if type == 'pub':

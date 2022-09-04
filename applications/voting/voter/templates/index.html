@@ -41,7 +41,28 @@
                 {% if cand['portfolio'] == p%}
                 <div class="col-lg-4">
                     <div class="card mb-3" style="max-width: 540px;">
-                        <img src="{{url_for('static', filename="hunger1.jpg")}}" class="img-fluid rounded-start cand-img" alt="...">
+                        <style>
+                            @media only screen and (min-width: 992px) {
+                                .candimg {
+                                    height: 164.14px;
+                                }  
+                            }
+
+                            @media only screen and (max-width: 991px) {
+                                .candimg {
+                                    height: 300.39px;
+                                }  
+                            }
+
+                            .candimg img {
+                                display: inline-block;
+                                height: 100%;
+                                object-fit: cover
+                            }
+                        </style>
+                        <div class="candimg">
+                            <img style="" src="{{ data['imgs'][cand['id']]}}" class="img-fluid rounded-start cand-img" alt="...">
+                        </div>
                         <div class="card-body">
                             <h5 class="card-title">{{cand['name']}}</h5>
                             <p class="card-text">{{cand['desc']}}</p>

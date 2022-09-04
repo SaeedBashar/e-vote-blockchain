@@ -26,7 +26,7 @@
       </div>
       <label for="" style="color: white;font-size: 25px">Portfolio</label>
       <input type="text" id='newP' value="" class="form-control">
-      <button onclick="addPortfolio()">Add</button>
+      <button onclick="addPortfolio(this)">Add</button>
     </div>
     <div id="id01" class="cus-modal" style="margin-left: 300px;width:80%">
       <form class="cus-modal-content animate">
@@ -44,6 +44,7 @@
             <div class="col-6">
               <label for="inputEmail4" class="form-label">Portfolio</label>
               <select id="portfolio" name="portfolio" class="form-select">
+                <option value=""></option>
                 {% for p in data['portfolio'] %}
                   <option value="{{p}}">{{p}}</option>
                 {% endfor %}
@@ -63,7 +64,7 @@
               <label for="inputEmail4" class="form-label">Description</label>
             </div>
           </div>
-          <button type="button" onclick="addCandidate()">Add To Candidates</button>
+          <button type="button" onclick="encodeImage(addCandidate)">Add To Candidates</button>
         </div>
       </form>
     </div>
@@ -71,44 +72,38 @@
       function getEl(el){
         return document.getElementById(el)
       }
-      function addCandidate(){
-        let data = {
-          name : getEl('name').value,
-          age : getEl('age').value,
-          description : getEl('description').value,
-          portfolio : getEl('portfolio').value
-        }
-        console.log(data)
-        fetch('/add-candidate',{
-          method: "POST",
-          mode: "cors",
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        })
-        .then(x=>x.json())
-        .then(x=>{
-          t = document.getElementById('table-' + x.portfolio)
-          t.innerHTML += `
-            <tr>
-              <td>${x.id}</td>
-              <td>${x.name}</td>
-              <td>${x.description}</td>
-              <td>${x.age}</td>
-            </tr>
-          `
-          document.getElementById('id01').style.display='none'
-        })
-        .catch(e=>console.log(e))
-      }
-      function addPortfolio(){
-        val = getEl('newP').value.toLowerCase()
-        if(val != ""){
-          data = {
-            'portfolio': val
+      function encodeImage(cb){
+        el = getEl('cand_img')
+        
+        if(el.files.length != 0){
+          var file = el.files[0];
+          //var file = el.files[0];
+          var reader = new FileReader();
+
+          reader.onloadend = function(){
+              debugger;
+              data = reader.result
+              data = data
+              //console.log('RESULT', data);
+              cb(data)
           }
-          fetch('/add-portfolio',{
+          x = reader.readAsDataURL(file)
+        }else{
+          cb(null);
+        }
+        
+      }
+      function addCandidate(imgByte){
+        if(isValid()){
+          let data = {
+            name : getEl('name').value,
+            age : getEl('age').value,
+            description : getEl('description').value,
+            portfolio : getEl('portfolio').value,
+            imgByte : imgByte
+          }
+          console.log(data)
+          fetch('/add-candidate',{
             method: "POST",
             mode: "cors",
             headers: {
@@ -118,14 +113,97 @@
           })
           .then(x=>x.json())
           .then(x=>{
-            console.log(x);
-            document.getElementById('id02').style.display='none'
-            p = getEl('portfolio')
-            p.innerHTML += `<option>${val}</option>`
+            t = document.getElementById('table-' + x.portfolio)
+            t.innerHTML += `
+              <tr>
+                <td>${x.id}</td>
+                <td>${x.name}</td>
+                <td>${x.description}</td>
+                <td>${x.age}</td>
+              </tr>
+            `
+            document.getElementById('id01').style.display='none'
+            getEl('name').value = null
+            getEl('age').value = null
+            getEl('description').value = null
+            getEl('portfolio').value = null
+            getEl('cand_img').value = null
           })
           .catch(e=>console.log(e))
+        }else{
+          alert("All fields are required!!")
         }
       }
+
+      function isValid(){
+        let isvalid = true
+        
+        if( getEl('name').value == null || getEl('name').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('age').value == null || getEl('age').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('description').value == null || getEl('description').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('portfolio').value == null || getEl('portfolio').value== ""){ 
+          isvalid = false
+        }
+
+        return isvalid;
+      }
+
+      function addPortfolio(){
+
+        el = getEl('newP')
+        val = el.value.toLowerCase()
+        el.value = ""
+
+        if(val != ""){
+          data = {
+            'portfolio': val
+          }
+          p_div = getEl(val)
+          if(p_div == null){
+            fetch('/add-portfolio',{
+              method: "POST",
+              mode: "cors",
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(data)
+            })
+            .then(x=>x.json())
+            .then(x=>{
+
+              p = getEl('portfolio')
+              p.innerHTML += `<option>${val}</option>`
+              
+              p_div = document.createElement('div');
+              p_div.setAttribute('id', val);
+              p_div.style.margin = "40px auto";
+
+              p_div.innerHTML = `
+                  <h3 style="text-transform: capitalize">${val}</h3>
+                  <table id="table-${val}" class="customers">
+                    <tr>
+                      <th>Id</th>
+                      <th>Name</th>
+                      <th>Description</th>
+                      <th>Age</th>
+                    </tr>
+                  </table>
+              `
+              getEl('body').append(p_div);
+              
+            })
+            .catch(e=>console.log(e))
+          }
+          document.getElementById('id02').style.display='none'
+        }
+      }
+
     </script>
 
     <div id="body" class="body">

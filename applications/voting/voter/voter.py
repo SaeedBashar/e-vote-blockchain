@@ -23,6 +23,7 @@ app = Flask(__name__)
 
 hasVoted = False
 result_data = None
+voter_img = {}
 
 @app.context_processor
 def cxt_proc():
@@ -62,6 +63,15 @@ def login():
                 response = requests.post('http://127.0.0.1:7000/user-get-info', json={'id': data['id']}).json()
                 if response['status'] == True:
                     if 'message' not in response:
+                        keys = gen_key()
+                        session['public_key'] = keys['public_key']
+                        session['private_key'] = keys['private_key']
+
+                        global voter_img
+                        for x in response['election_info']['candidates']:
+                            voter_img[x['id']] = x['img']
+                            x['img'] = ''
+
                         session['ELECTION_INFO'] = response['election_info']
                         session['ELECTION_ADDR'] = response['election_addr']
                         session['MINER_NODES'] = response['miner_nodes']
@@ -70,12 +80,10 @@ def login():
                         session['isLoggedIn'] = True
                         session['uname'] = uname
 
-                        keys = gen_key()
-                        session['public_key'] = keys['public_key']
-                        session['private_key'] = keys['private_key']
 
                         global hasVoted
                         g.hasVoted = True
+                        
                         
                         return redirect('/index')
                     else:
@@ -83,7 +91,7 @@ def login():
             else:
                 return redirect('/voted')
         else:
-            return data
+            return render_template('not-eligible.html')
         # return {'status': False, 'message': 'You are not eligible to vote'}
 
 @app.route('/index')
@@ -91,7 +99,8 @@ def index():
     if session.get('isLoggedIn', None) != None:
         if not hasVoted:
             data = {
-                'info': session['ELECTION_INFO']
+                'info': session['ELECTION_INFO'],
+                'imgs': voter_img
             }
             return render_template('index.html', data=data)
         return redirect('/voted')
@@ -171,7 +180,6 @@ def get_result_data():
     return jsonify(result_data)
 
 
-
 def gen_key():
  
     key = RSA.generate(1024)
@@ -224,8 +232,8 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-p', '--port', default=8080, type=int, help='port to listen on')
-    parser.add_argument('--host', default='127.0.0.1', type=str, help='port to listen on')
+    parser.add_argument('--host', default='0.0.0.0', type=str, help='port to listen on')
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='127.0.0.1', port=port, debug = True, threaded = True)
+    app.run(host='0.0.0.0', port=port, debug = True, threaded = True)
