@@ -58,9 +58,9 @@ class Node_connection(threading.Thread):
 
     def decompress(self, compressed):
         
-        self.node.log(self.id + ":decompress:input: " + str(compressed))
+        self.node.log(self.pk + ":decompress:input: " + str(compressed))
         compressed = base64.b64decode(compressed)
-        self.node.log(self.id + ":decompress:b64decode: " + str(compressed))
+        self.node.log(self.pk + ":decompress:b64decode: " + str(compressed))
 
         try:
             if compressed[-4:] == b'zlib':
@@ -74,7 +74,7 @@ class Node_connection(threading.Thread):
         except Exception as e:
             print("Exception: " + str(e))
 
-        # self.node.log(self.id + ":decompress:result: " + str(compressed))
+        # self.node.log(self.pk + ":decompress:result: " + str(compressed))
 
         return compressed
 

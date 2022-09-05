@@ -245,7 +245,7 @@ class Node(threading.Thread):
                 for i, b in list(enumerate(self.blockchain.chain))[start_from:]:
                     response_data = {
                         'type': 'CHAIN_RESPONSE',
-                        'finished': i + start_from == len(self.blockchain.chain) - 1,
+                        'finished': i + start_from == len(self.blockchain.chain),
                         'block': b.block_item
                     }
 
@@ -253,9 +253,9 @@ class Node(threading.Thread):
             
             elif data['type'] == 'CHAIN_RESPONSE':
                 temp = data['block'].copy()
-                data['type'] = 'NEW_BLOCK_REQUEST'
-                res = self.node_message(None, data['block'])
+                res = self.node_message(None, {'type': 'NEW_BLOCK_REQUEST', 'block': data['block']})
                 temp['data'] = json.loads(str(temp['data']))
+
 
                 # Convert transactions in block into json objects
                 for tx in temp['data']:
@@ -384,6 +384,7 @@ class Node(threading.Thread):
                 db.add_transaction(tmp)
 
                 self.process_transactions([tmp.tx_item])
+                self.sync_finished = True
 
         self.log("[RECEIVED MESSAGE]: Data from node %s:[%s]" % (node_conn.address, str(data)))
 
@@ -533,7 +534,7 @@ class Node(threading.Thread):
                                 tx['to_addr'],
                                 tx['value'],
                                 tx['gas'],
-                                tx['args'],
+                                tx['args'] if type(tx['args']) != str else ast.literal_eval(tx['args']),
                                 tx['timestamp']
                             )
                     
@@ -548,27 +549,26 @@ class Node(threading.Thread):
                                                 tx['to_addr'],
                                                 tx['value'],
                                                 tx['gas'],
-                                                tx['args'],
+                                                tx['args'] if type(tx['args']) != str else ast.literal_eval(tx['args']),
                                                 tx['timestamp']
                                             )
                     
                     tmp_tx.set_transaction()
                     db.update_state_obj(balance, tmp_tx)
             elif tx['to_addr'] == None:
-                BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-                contract_path = os.path.join(BASE_DIR, "..", "blockchain", "contracts\{}.py".format(trans['contract_addr']))
+                # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                # contract_path = os.path.join(BASE_DIR, "..", "blockchain", "contracts\{}.py".format(tx['contract_addr']))
 
-                path = Path(contract_path)
-                if not path.exists():
-                    path.write_text(tx['args'][0])
+                # path = Path(contract_path)
+                # if not path.exists():
+                #     path.write_text(tx['args'][0])
 
-                # status = db.add_to_state(trans['contract_addr'])
                 tmp_tx = Transaction(
                                             tx['from_addr'],
                                             tx['to_addr'],
                                             tx['value'],
                                             tx['gas'],
-                                            tx['args'],
+                                            tx['args'] if type(tx['args']) != str else ast.literal_eval(tx['args']),
                                             tx['timestamp']
                                         )
                 
@@ -576,26 +576,27 @@ class Node(threading.Thread):
 
                 status = db.update_state_obj(tx['value'], tmp_tx)
                 if status:
-                    import imp
+                    # import imp
 
-                    fp, path, desc = imp.find_module(str(tx['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
-                    c_module = imp.load_module(str(tx['contract_addr']), fp, path, desc)
-                    sys.modules[tx['contract_addr']] = c_module
+                    # fp, path, desc = imp.find_module(str(tx['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
+                    # c_module = imp.load_module(str(tx['contract_addr']), fp, path, desc)
+                    # sys.modules[tx['contract_addr']] = c_module
 
-                    contract_tx = Transaction(tx['contract_addr'], None, 0, 0)
-                    db.update_state_obj(0, contract_tx)
+                    # contract_tx = Transaction(tx['contract_addr'], None, 0, 0)
+                    # db.update_state_obj(0, contract_tx)
 
-                    state = db.get_data('contracts-states')[tx['contract_addr']]
-                    return_state = c_module.contract(action=tx['action'], state = state)
-                    db.update_state_cont(tx['contract_addr'], return_state)
+                    # state = db.get_data('contracts-states')[tx['contract_addr']]
+                    # return_state = c_module.contract(action=tx['action'], state = state)
+                    # db.update_state_cont(tx['contract_addr'], return_state)
                     
                     # Stores the start and end time of each contract
-                    self.blockchain.contract_params[tx['contract_addr']] = tx['args'][1]
-                    db.add_contract_info((
-                                            tx['contract_addr'], 
-                                            tx['args'][1]['start_time'], 
-                                            tx['args'][1]['end_time']
-                                        ))
+                    # self.blockchain.contract_params[tx['contract_addr']] = tx['args'][1]
+                    # db.add_contract_info((
+                    #                         tx['contract_addr'], 
+                    #                         tx['args'][1]['start_time'], 
+                    #                         tx['args'][1]['end_time']
+                    #                     ))
+                    pass
             elif tx['to_addr'][:2] == 'SC':
 
                 import imp

@@ -165,7 +165,7 @@ class Blockchain:
                                                 t_item['to_addr'],
                                                 t_item['value'],
                                                 t_item['gas'],
-                                                t_item['args'],
+                                                t_item['args'] if type(t_item['args']) != str else ast.literal_eval(t_item['args']),
                                                 t_item['timestamp']
                                             )
                     tmp.tx_hash = t_item['tx_hash']
@@ -196,7 +196,7 @@ class Blockchain:
 
                 # Remove txs from non mined to mined txs
                 for t in tmp_txs:
-                    db.add_to_mined_tx(len(self.chain), t)
+                    db.add_to_mined_tx(n_block['index'], t)
                     self.transactions = list(filter(lambda tx: tx not in tmp_txs, self.transactions))
 
                 return {
@@ -208,7 +208,7 @@ class Blockchain:
 
     def add_transaction(self, trans, send_nodes, node_conn_exempt = None):
         if not trans['to_addr'] == None and trans['to_addr'][:2] != "SC":
-            # For transactions, that involove sending coin from one address to another
+            # For transactions, that involve sending coin from one address to another
 
             if trans['from_addr'] != None: # if funds being transferred to another account
 
