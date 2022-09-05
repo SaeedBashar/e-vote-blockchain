@@ -432,7 +432,7 @@ class Node(threading.Thread):
                     self.send_to_node(conn, request_data)
                 
                 # Delay execution to allow all nodes to send feedback
-                time.sleep(0.3)
+                time.sleep(1.0)
                 node_with_longest_chain = max(self.length_response, key=lambda x : int(x['length']))
                 
                 if len(self.blockchain.chain) < int(node_with_longest_chain['length']):
@@ -543,7 +543,7 @@ class Node(threading.Thread):
 
                 else:
                     db.add_to_state(tx['to_addr'])
-                    balance = self.get_balance(tx['to_addr'])
+                    balance = self.blockchain.get_balance(tx['to_addr'])
                     tmp_tx = Transaction(
                                                 tx['from_addr'],
                                                 tx['to_addr'],
@@ -556,12 +556,13 @@ class Node(threading.Thread):
                     tmp_tx.set_transaction()
                     db.update_state_obj(balance, tmp_tx)
             elif tx['to_addr'] == None:
-                # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-                # contract_path = os.path.join(BASE_DIR, "..", "blockchain", "contracts\{}.py".format(tx['contract_addr']))
+                BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                tx['args'] = ast.literal_eval(tx['args']) if type(tx['args']) == str else tx['args']
+                contract_path = os.path.join(BASE_DIR, "..", "blockchain", "contracts\{}.py".format(tx['args'][1]['contract_addr']))
 
-                # path = Path(contract_path)
-                # if not path.exists():
-                #     path.write_text(tx['args'][0])
+                path = Path(contract_path)
+                if not path.exists():
+                    path.write_text(tx['args'][0])
 
                 tmp_tx = Transaction(
                                             tx['from_addr'],
@@ -576,27 +577,30 @@ class Node(threading.Thread):
 
                 status = db.update_state_obj(tx['value'], tmp_tx)
                 if status:
-                    # import imp
+                    import imp
 
-                    # fp, path, desc = imp.find_module(str(tx['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
-                    # c_module = imp.load_module(str(tx['contract_addr']), fp, path, desc)
-                    # sys.modules[tx['contract_addr']] = c_module
+                    fp, path, desc = imp.find_module(str(tx['args'][1]['contract_addr']), path=[os.path.join(BASE_DIR, "..", "blockchain", "contracts")])
+                    c_module = imp.load_module(str(tx['args'][1]['contract_addr']), fp, path, desc)
+                    sys.modules[tx['args'][1]['contract_addr']] = c_module
 
-                    # contract_tx = Transaction(tx['contract_addr'], None, 0, 0)
-                    # db.update_state_obj(0, contract_tx)
+                    contract_tx = Transaction(tx['args'][1]['contract_addr'], None, 0, 0)
+                    db.update_state_obj(0, contract_tx)
 
-                    # state = db.get_data('contracts-states')[tx['contract_addr']]
-                    # return_state = c_module.contract(action=tx['action'], state = state)
-                    # db.update_state_cont(tx['contract_addr'], return_state)
+                    state = db.get_data('contracts-states')[tx['args'][1]['contract_addr']]
+                    return_state = c_module.contract(action=tx['args'][1]['action'], state = state)
+                    db.update_state_cont(tx['args'][1]['contract_addr'], return_state)
                     
                     # Stores the start and end time of each contract
-                    # self.blockchain.contract_params[tx['contract_addr']] = tx['args'][1]
-                    # db.add_contract_info((
-                    #                         tx['contract_addr'], 
-                    #                         tx['args'][1]['start_time'], 
-                    #                         tx['args'][1]['end_time']
-                    #                     ))
-                    pass
+                    self.blockchain.contract_params[tx['args'][1]['contract_addr']] = {
+                                                                    'start_time': tx['args'][1]['start_time'],
+                                                                    'end_time': tx['args'][1]['end_time']
+                                                                } 
+                    db.add_contract_info((
+                                            tx['args'][1]['contract_addr'], 
+                                            tx['args'][1]['start_time'], 
+                                            tx['args'][1]['end_time']
+                                        ))
+                    
             elif tx['to_addr'][:2] == 'SC':
 
                 import imp
@@ -607,7 +611,7 @@ class Node(threading.Thread):
                 
                 state = db.get_data('contracts-states')[tx['to_addr'][2:]]
 
-                return_state = c_module.contract(action=tx['action'], state = state, args = tx['args'])
+                return_state = c_module.contract(action=tx['args'][0]['action'], state = state, args = tx['args'])
                 db.update_state_cont(tx['to_addr'][2:], return_state)
             else:
                 pass

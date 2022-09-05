@@ -321,11 +321,11 @@ class Blockchain:
         elif trans['to_addr'] == None:  
             # For transactions initiating contract on the network
 
-            res = Wallet.verify_transaction(trans['signature'], trans['from_addr'], trans['sign_data'])
+            res = Wallet.verify_transaction(trans['args'][1]['signature'], trans['from_addr'], trans['args'][1]['sign_data'])
 
             if res['status'] == True:
                 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-                contract_path = os.path.join(BASE_DIR, "contracts\{}.py".format(trans['contract_addr']))
+                contract_path = os.path.join(BASE_DIR, "contracts\{}.py".format(trans['args'][1]['contract_addr']))
 
                 path = Path(contract_path)
                 if not path.exists():
@@ -349,21 +349,24 @@ class Blockchain:
                 if status:
                     import imp
 
-                    fp, path, desc = imp.find_module(str(trans['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
-                    c_module = imp.load_module(str(trans['contract_addr']), fp, path, desc)
-                    sys.modules[trans['contract_addr']] = c_module
+                    fp, path, desc = imp.find_module(str(trans['args'][1]['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
+                    c_module = imp.load_module(str(trans['args'][1]['contract_addr']), fp, path, desc)
+                    sys.modules[trans['args'][1]['contract_addr']] = c_module
 
-                    contract_tx = Transaction(trans['contract_addr'], None, 0, 0)
+                    contract_tx = Transaction(trans['args'][1]['contract_addr'], None, 0, 0)
                     db.update_state_obj(0, contract_tx)
 
-                    state = db.get_data('contracts-states')[trans['contract_addr']]
-                    return_state = c_module.contract(action=trans['action'], state = state)
-                    db.update_state_cont(trans['contract_addr'], return_state)
+                    state = db.get_data('contracts-states')[trans['args'][1]['contract_addr']]
+                    return_state = c_module.contract(action=trans['args'][1]['action'], state = state)
+                    db.update_state_cont(trans['args'][1]['contract_addr'], return_state)
                     
                     # Stores the start and end time of each contract
-                    self.contract_params[trans['contract_addr']] = trans['args'][1]
+                    self.contract_params[trans['args'][1]['contract_addr']] = {
+                                                                    'start_time': trans['args'][1]['start_time'],
+                                                                    'end_time': trans['args'][1]['end_time']
+                                                                } 
                     db.add_contract_info((
-                                            trans['contract_addr'], 
+                                            trans['args'][1]['contract_addr'], 
                                             trans['args'][1]['start_time'], 
                                             trans['args'][1]['end_time']
                                         ))
@@ -385,13 +388,13 @@ class Blockchain:
             # For transactions with a contract addresss
 
             res = Wallet.verify_transaction(
-                trans['signature'],
+                trans['args'][0]['signature'],
                 trans['from_addr'], 
-                trans['sign_data']
+                trans['args'][0]['sign_data']
                 )
 
             if res['status'] == True:
-                tmp = float(trans['args'][2])
+                tmp = float(trans['args'][0]['transaction_time'])
 
                 if trans['to_addr'][2:] not in self.contract_params:
                     tmp_cont = db.get_contract_info(trans['to_addr'][2:])[0]
@@ -410,7 +413,7 @@ class Blockchain:
                     
                     state = db.get_data('contracts-states')[trans['to_addr'][2:]]
 
-                    return_state = c_module.contract(action=trans['action'], state = state, args = trans['args'])
+                    return_state = c_module.contract(action=trans['args'][0]['action'], state = state, args = trans['args'])
                     db.update_state_cont(trans['to_addr'][2:], return_state)
                     tmp_tx = Transaction(
                                                 trans['from_addr'],

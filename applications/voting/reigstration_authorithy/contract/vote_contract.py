@@ -40,14 +40,13 @@ def contract(action='init', args=[], state={}):
         if res['status'] == True:
             nonlocal election_in_progress
             if election_in_progress:
-                for k in list(args[1].keys()):
+                for k in list(args[1]['candidates'].keys()):
                     for k1 in state['storage']['candidates'].keys():
                         if k == k1:
-                            state['storage']['candidates'][k][args[1][k]] += 1
+                            state['storage']['candidates'][k][args[1]['candidates'][k]] += 1
                             break
                 state['storage']['total_votes'] += 1
      
-
     def election_stop_timer(stop_time):
 
         def stop_election():
@@ -58,7 +57,7 @@ def contract(action='init', args=[], state={}):
         timer.start()
 
     def verify_transaction():
-        data = args[0]['sign_data']
+        data = args[1]['ballot_info']['sign_data']
         tmp = ""
         for x in data:
             tmp += x
@@ -68,7 +67,7 @@ def contract(action='init', args=[], state={}):
             pub_key = RSA.importKey(verification_pub_key.encode())
             verifier = PKCS1_v1_5.new(pub_key)
 
-            verifier.verify(h, args[0]['signature'].encode())
+            verifier.verify(h, args[1]['ballot_info']['signature'].encode())
             return {
                 'status': True,
                 'msg': 'Verification Success'

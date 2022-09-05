@@ -116,27 +116,30 @@ def submit_ballot():
             'to_addr': 'SC' + session['ELECTION_ADDR'],
             'value': 0,
             'gas': 0,
-            'args': [
-                {
-                    'signature': session['SIGNATURE'], 
-                    'sign_data': [session['uname'], session['uid']]
-                },
-                voted_candidates
-            ]
+            'args': []
         }
+    transaction['args'].append({})
     time_voted = dt.timestamp(dt.now())
-    transaction['args'].append(time_voted)
+    transaction['args'][0]['transaction_time'] = time_voted
     
-    transaction['action'] = 'vote_cast'
+    transaction['args'][0]['action'] = 'vote_cast'
     
-    transaction['sign_data'] = [
+    transaction['args'][0]['sign_data'] = [
         session['uname'],
         session['uid'],
     ]
-    transaction['sign_data'].extend(list(voted_candidates.values()))
+    transaction['args'][0]['sign_data'].extend(list(voted_candidates.values()))
 
-    transaction['signature'] = sign_ballot(session['private_key'], transaction['sign_data'])
+    transaction['args'][0]['signature'] = sign_ballot(session['private_key'], transaction['args'][0]['sign_data'])
 
+    transaction['args'].append({
+                            'candidates': voted_candidates,
+                            'ballot_info': {
+                                            'signature': session['SIGNATURE'], 
+                                            'sign_data': [session['uname'], session['uid']]
+                                        }
+                            })
+    
     # =================================================================
 
     for miner in session['MINER_NODES']:
@@ -172,7 +175,7 @@ def get_results():
         print(data)
         return render_template('/check-results.html', data=data)
     else:
-        return jsonify(response)
+        return render_template('/result-not-ready.html')
 
 @app.route('/get-result-data')
 def get_result_data():
@@ -223,7 +226,6 @@ def format_key_for_api(key, type='pub'):
             return binascii.hexlify(key.encode()).decode().upper()
     else:
         return key
-
 
 app.secret_key = 'mysecret'
 

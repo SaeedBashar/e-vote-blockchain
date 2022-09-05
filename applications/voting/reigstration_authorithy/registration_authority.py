@@ -156,9 +156,8 @@ def start_election():
             'start_time': t1,
             'end_time': t2
         }
-        transaction['args'].append(contract_params)
-        transaction['contract_addr'] = get_election_addr(transaction['args'][0])
-        transaction['action'] = "init"
+        contract_params['contract_addr'] = get_election_addr(transaction['args'][0])
+        contract_params['action'] = "init"
 
         # Signing the transaction using the contract the address
         # ===================================================
@@ -167,11 +166,13 @@ def start_election():
 
         priv_key = RSA.importKey(data['keys']['private_key'].encode())
         signer = PKCS1_v1_5.new(priv_key)
-        h = SHA256.new((transaction['contract_addr']).encode())
+        h = SHA256.new((contract_params['contract_addr']).encode())
         sig = signer.sign(h)
-        transaction['signature'] = str(sig)
-        transaction['sign_data'] = [transaction['contract_addr']]
+        contract_params['signature'] = str(sig)
+        contract_params['sign_data'] = [contract_params['contract_addr']]
         # ===================================================
+        
+        transaction['args'].append(contract_params)
 
         response = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
         print(response.json())
