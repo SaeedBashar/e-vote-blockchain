@@ -1,0 +1,143 @@
+{% extends 'base-logged-in-pages.html' %}
+
+{% block head %}
+    <title>Election Transactions</title>
+   
+{% endblock  %}
+
+{% block subbody %}
+<main id="main" class="main">
+    <div class="card-body pb-0">
+    <h5 class="card-title">ELECTION Transactions</h5>
+
+    <div class="container">
+        <div class="row">
+            {% for tx in  data['transactions'] %}
+                    <div class="col-12">
+                        <div class="card" style="width: 100%">
+                            <div>
+                                Voter Address : <br/><p>{{tx['from_addr']}}</p>
+                            </div>
+                            Voted Candidates <br/>
+                        </div>
+                        <div class="card" style="width: 100%">
+                            <div class="card-body">
+                                <div>
+                                    <p>
+                                        President :
+                                        {% for c in data['c_names']%}
+                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['president'])%}
+                                                {{c['name']}}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                <div>
+                            </div>
+                        </div>
+                        <div class="card" style="width: 100%">
+                            <div class="card-body">
+                                <div>
+                                    <p>
+                                        Secretary :
+                                        {% for c in data['c_names']%}
+                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['secretary'])%}
+                                                {{c['name']}}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                </div>
+                                
+                            </div>
+                        </div>
+                        <div class="card" style="width: 100%">
+                            <div class="card-body">
+                                <div>
+                                    <p>
+                                        Treasurer :
+                                        {% for c in data['c_names']%}
+                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['treasurer'])%}
+                                                {{c['name']}}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            {% endfor %}  
+        </div>
+    </div>
+
+    <script>
+        data = null
+    
+        document.addEventListener("DOMContentLoaded", () => {
+
+        var tmp = {};
+        fetch('/get-result')
+        .then(x=>x.json())
+        .then(x=>{
+            data = x
+            console.log(data)
+        })
+
+        setTimeout(()=>{
+            cands = data.result.candidates
+            for(let i in cands){
+                tmp[i] = []
+
+                for(let j in cands[i]){
+                    for(let k of data.cand_names){
+                        if(+j == +k.id){
+                            tmp[i].push({
+                                value: cands[i][j],
+                                name: k.name
+                            })
+                        }
+                    }
+                }
+            }
+            
+
+            for(let i in tmp){
+                console.log(tmp[i])
+                echarts.init(document.querySelector("#" + i + "-chart")).setOption({
+                    tooltip: {
+                    trigger: 'item'
+                    },
+                    legend: {
+                    top: '5%',
+                    left: 'center'
+                    },
+                    series: [{
+                    name: i,
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: tmp[i]
+                    }]
+                });
+            }
+            
+        }, 3000)
+      });
+
+    </script>
+
+    </div>
+</main>
+{% endblock %}

@@ -1,19 +1,21 @@
 {% extends 'base-logged-in-pages.html' %}
 
 {% block head %}
-  <title>Node Connection</title>
+  <title>Node | Node Connection</title>
 
 {%endblock%}
 
 {% block subbody%}
 <main class="main" id="main">
 <div class="container" style="margin-top:70px">
-    <div class="row">
-        <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+  <div class="row">
+    <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
+          <div class="pagetitle">
+            <h1>Connect to a Node</h1>
+          </div>
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Connect to a Node</h5>
-    
+                    <h5 class="card-title">Node Address And Port</h5>
                     <form class="row g-3">
                         <div class="col-md-12">
                         <div class="form-floating">
@@ -138,11 +140,11 @@
       </div>    
     </div>
 
-    <div class="row">
+    <!--<div class="row">
         <div class="col-lg-8 offset-lg-2 col-md-10 offset-md-1">
             <div class="pagetitle">
                 <h1>Connected Inbound Nodes</h1>
-            </div><!-- End Page Title -->
+            </div>
           
             <section class="section">
                 <div class="row">
@@ -194,7 +196,7 @@
                 </div>
             </section>  
         </div>    
-    </div>
+    </div>-->
 </div>
 </main>
 {% endblock %}

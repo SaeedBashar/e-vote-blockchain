@@ -154,6 +154,10 @@ class Blockchain:
                     data = json.loads(path.read_text())
                 
                     data['difficulty'] = self.difficulty
+
+                    if len(self.chain) % 10 == 0:
+                            data['reward'] -= 1
+
                     path.write_text(json.dumps(data))
                 # =======================================================
 
@@ -236,52 +240,35 @@ class Blockchain:
                         
                         balance = balance - int(trans['value']) - int(trans['gas'])
                         if Transaction.is_valid(trans):
-                            is_valid_tx = True
-                            r_data = db.get_data('transactions')
-                            tmp = []
-                            for t in r_data:
-                                tmp.append(Transaction.get_tx_object(t))
-
-                            self.transactions = tmp
-                            tmp_txs = filter(lambda x: x.from_addr == trans['from_addr'], self.transactions)
                             
-                            for tx in tmp_txs:
-                                if str(tx.timestamp) == trans['timestamp']:
-                                    is_valid_tx = False
+                            tmp_tx = Transaction(
+                                            trans['from_addr'],
+                                            trans['to_addr'],
+                                            trans['value'],
+                                            trans['gas'],
+                                            trans['args'],
+                                            trans['timestamp']
+                                        )
+                            
+                            tmp_tx.set_transaction()
 
-                            if is_valid_tx:
-                                tmp_tx = Transaction(
-                                                trans['from_addr'],
-                                                trans['to_addr'],
-                                                trans['value'],
-                                                trans['gas'],
-                                                trans['args'],
-                                                trans['timestamp']
-                                            )
-                                
-                                tmp_tx.set_transaction()
+                            self.transactions.append(tmp_tx)
+                            db.add_transaction(tmp_tx)
+                            db.update_state_obj(balance, tmp_tx)
 
-                                self.transactions.append(tmp_tx)
-                                db.add_transaction(tmp_tx)
-                                db.update_state_obj(balance, tmp_tx)
+                            transaction = tmp_tx.tx_item
+                            transaction['signature'] = trans['signature']
+                            data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": transaction}
+                            
+                            exclude_list = [trans['from_addr']]
 
-                                transaction = tmp_tx.tx_item
-                                transaction['signature'] = trans['signature']
-                                data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": transaction}
-                                
-                                exclude_list = [trans['from_addr']]
+                            if node_conn_exempt != None:
+                                exclude_list.append(node_conn_exempt.pk)
 
-                                if node_conn_exempt != None:
-                                    exclude_list.append(node_conn_exempt.pk)
-
-                                send_nodes(data, exclude_list)
-                                return {
-                                    "status": True,
-                                    "message": "[SUCCESS] Transaction made successfully"
-                                }
+                            send_nodes(data, exclude_list)
                             return {
-                                "status": False,
-                                "message": "[FAILED], Transaction has been recorded already"
+                                "status": True,
+                                "message": "[SUCCESS] Transaction made successfully"
                             }
                         return {
                                 "status": False,
@@ -323,98 +310,16 @@ class Blockchain:
 
             res = Wallet.verify_transaction(trans['args'][1]['signature'], trans['from_addr'], trans['args'][1]['sign_data'])
 
-            if res['status'] == True:
-                BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-                contract_path = os.path.join(BASE_DIR, "contracts\{}.py".format(trans['args'][1]['contract_addr']))
-
-                path = Path(contract_path)
-                if not path.exists():
-                    path.write_text(trans['args'][0])
-
-                # status = db.add_to_state(trans['contract_addr'])
-                tmp_tx = Transaction(
-                                            trans['from_addr'],
-                                            trans['to_addr'],
-                                            trans['value'],
-                                            trans['gas'],
-                                            trans['args'],
-                                            trans['timestamp']
-                                        )
-                
-                tmp_tx.set_transaction()
-
-                self.transactions.append(tmp_tx)
-                db.add_transaction(tmp_tx)
-                status = db.update_state_obj(trans['value'], tmp_tx)
-                if status:
-                    import imp
-
-                    fp, path, desc = imp.find_module(str(trans['args'][1]['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
-                    c_module = imp.load_module(str(trans['args'][1]['contract_addr']), fp, path, desc)
-                    sys.modules[trans['args'][1]['contract_addr']] = c_module
-
-                    contract_tx = Transaction(trans['args'][1]['contract_addr'], None, 0, 0)
-                    db.update_state_obj(0, contract_tx)
-
-                    state = db.get_data('contracts-states')[trans['args'][1]['contract_addr']]
-                    return_state = c_module.contract(action=trans['args'][1]['action'], state = state)
-                    db.update_state_cont(trans['args'][1]['contract_addr'], return_state)
-                    
-                    # Stores the start and end time of each contract
-                    self.contract_params[trans['args'][1]['contract_addr']] = {
-                                                                    'start_time': trans['args'][1]['start_time'],
-                                                                    'end_time': trans['args'][1]['end_time']
-                                                                } 
-                    db.add_contract_info((
-                                            trans['args'][1]['contract_addr'], 
-                                            trans['args'][1]['start_time'], 
-                                            trans['args'][1]['end_time']
-                                        ))
-
-                    data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}
-                            
-                    exclude_list = [trans['from_addr']]
-
-                    if node_conn_exempt != None:
-                        exclude_list.append(node_conn_exempt.pk)
-
-                    send_nodes(data, exclude_list)
-                    
-                return {'status': True, 'message': 'Contract Instantiated Successfully'}
-                
-            return {'status': False, 'message': 'Transaction verification failed'}
-
-        elif trans['to_addr'][:2] == 'SC':  
-            # For transactions with a contract addresss
-
-            res = Wallet.verify_transaction(
-                trans['args'][0]['signature'],
-                trans['from_addr'], 
-                trans['args'][0]['sign_data']
-                )
-
-            if res['status'] == True:
-                tmp = float(trans['args'][0]['transaction_time'])
-
-                if trans['to_addr'][2:] not in self.contract_params:
-                    tmp_cont = db.get_contract_info(trans['to_addr'][2:])[0]
-
-                    self.contract_params[trans['to_addr'][2:]] = {
-                        'start_time': float(tmp_cont[1]),
-                        'end_time': float(tmp_cont[2])
-                    }
-
-                if tmp >= self.contract_params[trans['to_addr'][2:]]['start_time'] and tmp <= self.contract_params[trans['to_addr'][2:]]['end_time']:
-                    import imp
-
+            if len(db.get_state(trans['args'][1]['contract_addr'])) == 0:  # check contract existence
+                if res['status'] == True:
                     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-                    fp, path, desc = imp.find_module(trans['to_addr'][2:], path=[os.path.join(BASE_DIR, "contracts")])
-                    c_module = imp.load_module(trans['to_addr'][2:], fp, path, desc)
-                    
-                    state = db.get_data('contracts-states')[trans['to_addr'][2:]]
+                    contract_path = os.path.join(BASE_DIR, "contracts\{}.py".format(trans['args'][1]['contract_addr']))
 
-                    return_state = c_module.contract(action=trans['args'][0]['action'], state = state, args = trans['args'])
-                    db.update_state_cont(trans['to_addr'][2:], return_state)
+                    path = Path(contract_path)
+                    if not path.exists():
+                        path.write_text(trans['args'][0])
+
+                    # status = db.add_to_state(trans['contract_addr'])
                     tmp_tx = Transaction(
                                                 trans['from_addr'],
                                                 trans['to_addr'],
@@ -428,20 +333,119 @@ class Blockchain:
 
                     self.transactions.append(tmp_tx)
                     db.add_transaction(tmp_tx)
+                    status = db.update_state_obj(trans['value'], tmp_tx)
+                    if status:
+                        import imp
 
-                    data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}            
-                    exclude_list = [trans['from_addr']]
+                        fp, path, desc = imp.find_module(str(trans['args'][1]['contract_addr']), path=[os.path.join(BASE_DIR, "contracts")])
+                        c_module = imp.load_module(str(trans['args'][1]['contract_addr']), fp, path, desc)
+                        sys.modules[trans['args'][1]['contract_addr']] = c_module
 
-                    if node_conn_exempt != None:
-                        exclude_list.append(node_conn_exempt.pk)
+                        contract_tx = Transaction(trans['args'][1]['contract_addr'], None, 0, 0, [], trans['args'][1]['start_time'])
+                        db.update_state_obj(0, contract_tx)
 
-                    send_nodes(data, exclude_list)
-                    return {'status': True, 'message': 'Contract Updated Successfully'}
-                else:
-                    return {'status': False, 'message': 'Contract Validity Period Expired'}
+                        state = db.get_data('contracts-states')[trans['args'][1]['contract_addr']]
+                        return_state = c_module.contract(action=trans['args'][1]['action'], state = state)
+                        db.update_state_cont(trans['args'][1]['contract_addr'], return_state)
+                        
+                        # Stores the start and end time of each contract
+                        self.contract_params[trans['args'][1]['contract_addr']] = {
+                                                                        'start_time': trans['args'][1]['start_time'],
+                                                                        'end_time': trans['args'][1]['end_time']
+                                                                    } 
+                        db.add_contract_info((
+                                                trans['args'][1]['contract_addr'], 
+                                                trans['args'][1]['start_time'], 
+                                                trans['args'][1]['end_time']
+                                            ))
 
-            return {'status': False, 'message': 'Transaction verification Failed!!!'}
+                        data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}
+                                
+                        exclude_list = [trans['from_addr']]
+
+                        if node_conn_exempt != None:
+                            exclude_list.append(node_conn_exempt.pk)
+
+                        send_nodes(data, exclude_list)
+                        
+                    return {'status': True, 'message': 'Contract Instantiated Successfully'}
                     
+                return {'status': False, 'message': 'Transaction verification failed!!'}
+            
+            return {'status': False, 'message': 'Transaction exist already!!'}
+
+        elif trans['to_addr'][:2] == 'SC':  
+            # For transactions with a contract addresss
+
+            res = Wallet.verify_transaction(
+                trans['args'][0]['signature'],
+                trans['from_addr'], 
+                trans['args'][0]['sign_data']
+                )
+
+            # Check for existence of transaction
+            is_valid = True
+            res_data = db.get_state(trans['to_addr'][2:])
+            if len(res_data) != 0:
+                tx_timestamps = json.loads(res_data[0][3])
+                for t in tx_timestamps:
+                    if float(t) == float(trans['timestamp']):
+                        is_valid = False
+            else:
+                is_valid = False
+            
+            
+            if is_valid:
+                if res['status'] == True:
+                    tmp = float(trans['args'][0]['transaction_time'])
+
+                    if trans['to_addr'][2:] not in self.contract_params:
+                        tmp_cont = db.get_contract_info(trans['to_addr'][2:])[0]
+
+                        self.contract_params[trans['to_addr'][2:]] = {
+                            'start_time': float(tmp_cont[1]),
+                            'end_time': float(tmp_cont[2])
+                        }
+
+                    if tmp >= self.contract_params[trans['to_addr'][2:]]['start_time'] and tmp <= self.contract_params[trans['to_addr'][2:]]['end_time']:
+                        import imp
+
+                        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                        fp, path, desc = imp.find_module(trans['to_addr'][2:], path=[os.path.join(BASE_DIR, "contracts")])
+                        c_module = imp.load_module(trans['to_addr'][2:], fp, path, desc)
+                        
+                        state = db.get_data('contracts-states')[trans['to_addr'][2:]]
+
+                        return_state = c_module.contract(action=trans['args'][0]['action'], state = state, args = trans['args'])
+                        return_state['timestamps'].append(trans['timestamp'])
+                        db.update_state_cont(trans['to_addr'][2:], return_state)
+                        tmp_tx = Transaction(
+                                                    trans['from_addr'],
+                                                    trans['to_addr'],
+                                                    trans['value'],
+                                                    trans['gas'],
+                                                    trans['args'],
+                                                    trans['timestamp']
+                                                )
+                        
+                        tmp_tx.set_transaction()
+
+                        self.transactions.append(tmp_tx)
+                        db.add_transaction(tmp_tx)
+
+                        data = {"type": "NEW_TRANSACTION_REQUEST", "transaction": trans}            
+                        exclude_list = [trans['from_addr']]
+
+                        if node_conn_exempt != None:
+                            exclude_list.append(node_conn_exempt.pk)
+
+                        send_nodes(data, exclude_list)
+                        return {'status': True, 'message': 'Contract Updated Successfully'}
+                    else:
+                        return {'status': False, 'message': 'Contract Validity Period Expired'}
+
+                return {'status': False, 'message': 'Transaction verification Failed!!'}
+            return {'status': False, 'message': 'Transaction is invalid!!'}   
         else:
             print('Invalid Transaction')
             return {

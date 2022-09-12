@@ -16,7 +16,6 @@
                 <div class="card-body">
                   <h5 class="card-title">Transaction</h5>
     
-                  <!-- Multi Columns Form -->
                   <form class="row g-3">
                     <div class="col-md-12">
                       <label for="inputName5" class="form-label">From Address</label>
@@ -36,11 +35,11 @@
                     </div>
                     <div class="col-12">
                       <label for="inputAddress5" class="form-label">Timestamp</label>
-                      <input type="text" disabled class="form-control" id="inputAddres5s" placeholder="1234 Main St" value="{{data['trans']['timestamp']}}">
+                      <input type="text" disabled class="form-control" id="inputAddres5s" value="{{data['trans']['timestamp']}}">
                     </div>
                     <div class="col-12">
                       <label for="inputAddress2" class="form-label">Transaction Hash</label>
-                      <input type="text" disabled class="form-control" id="inputAddress2" value="{{data['trans']['tx_hash']}}" placeholder="Apartment, studio, or floor">
+                      <input type="text" disabled class="form-control" id="inputAddress2" value="{{data['trans']['tx_hash']}}">
                     </div>
                     <div class="col-12">
                         <div class="form-floating">

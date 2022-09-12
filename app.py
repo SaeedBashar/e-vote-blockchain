@@ -131,6 +131,7 @@ def signin():
 
 @app.route('/logout')
 def signout():
+    
     session.pop('u_name', None)
     session.pop('name', None)
     session.pop('email', None)
@@ -204,20 +205,6 @@ def generate():
                     })
         else:
             return redirect('/register')
-    else:
-        return redirect('/login')
-
-@app.route('/profile', methods=['GET', 'POST'])
-def profile():
-    if 'u_name' in session:
-        data = {}
-        data['name'] = session['name']
-        data['email'] = session['email']
-        data['u_name'] = session['u_name']
-        data['password'] = session['password']
-        data['public_key'] = format_key_for_display(session['public_key'])
-
-        return render_template('home/users-profile.html', data = data)
     else:
         return redirect('/login')
 
@@ -430,5 +417,5 @@ def page_not_found(error):
 app.secret_key = 'mysecret'
 
 if __name__ == '__main__':
-    app.run(host=addr, port=(int(port) - 1000), debug = True)
+    app.run(host=addr, port=(int(port) - 1000), debug = True, threaded = True)
 

@@ -234,9 +234,14 @@ class Database:
                 query = "SELECT * FROM state WHERE public_key = ?"
                 cursor = conn.execute(query, (tx.from_addr,))
                 r_data = cursor.fetchall()
+
                 if len(r_data) != 0:
-                    query = "UPDATE state set balance = ? where public_key = ?"
-                    conn.execute(query, (bal, tx.from_addr))
+                    
+                    timestamps = json.loads(r_data[0][3])
+                    timestamps.append(tx.timestamp)
+
+                    query = "UPDATE state set balance = ?, used_timestamps= ? where public_key = ?"
+                    conn.execute(query, (bal, json.dumps(timestamps), tx.from_addr))
                     conn.commit()
                 else:
                     self.add_to_state(tx.from_addr)
@@ -287,7 +292,7 @@ class Database:
     @classmethod
     def update_state_cont(self, addr, state):
         with sqlite3.connect(db_path) as conn:
-            query = "UPDATE state set balance = ?, body = ?, timestamps = ?, storage = ? where public_key = ?"
+            query = "UPDATE state set balance = ?, body = ?, used_timestamps = ?, storage = ? where public_key = ?"
             conn.execute(query, (state['balance'], state['body'], json.dumps(state['timestamps']), json.dumps(state['storage']), addr))
             conn.commit()
             return True

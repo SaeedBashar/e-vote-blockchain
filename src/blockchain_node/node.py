@@ -135,6 +135,10 @@ class Node(threading.Thread):
                         data = json.loads(path.read_text())
                     
                         data['difficulty'] = self.blockchain.difficulty
+
+                        if len(self.blockchain.chain) % 10 == 0:
+                            data['reward'] -= 1
+                            
                         path.write_text(json.dumps(data))
                     # =======================================================
 
@@ -432,7 +436,7 @@ class Node(threading.Thread):
                     self.send_to_node(conn, request_data)
                 
                 # Delay execution to allow all nodes to send feedback
-                time.sleep(1.0)
+                time.sleep(1.5)
                 node_with_longest_chain = max(self.length_response, key=lambda x : int(x['length']))
                 
                 if len(self.blockchain.chain) < int(node_with_longest_chain['length']):

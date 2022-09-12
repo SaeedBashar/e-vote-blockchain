@@ -27,7 +27,7 @@ def get_block():
     block = {
         'index': r_data[0][0],
         'timestamp': r_data[0][1],
-        'data': r_data[0][2].replace("}", "}\n\n"),
+        'data': json.loads(r_data[0][2]),
         'difficulty': r_data[0][3],
         'merkle_root': r_data[0][4],
         'prev_hash': r_data[0][5],
@@ -77,7 +77,8 @@ def get_transaction():
         from_addr = format_key_for_display(r_data[0][1])
         to_addr = format_key_for_display(r_data[0][2])
 
-        tx = {
+        tx = {  
+                "block_index": r_data[0][0],
                 "from_addr": from_addr,
                 "to_addr": to_addr,
                 "value": r_data[0][3],

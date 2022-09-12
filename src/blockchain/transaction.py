@@ -11,7 +11,7 @@ from Crypto.Signature import PKCS1_v1_5
 import time as tm
 from time import time
 
-
+from database.database import Database as db
 
 class Transaction:
 
@@ -80,9 +80,19 @@ class Transaction:
     @classmethod
     def is_valid(self, tx):
        
+        # check amount and gas a not less than 0
         if int(tx['value']) < 0 or int(tx['gas']) < 0:
     
             return False
+        
+
+        # check for existence of transaction
+        res_data = db.get_state(tx['from_addr'])
+        if len(res_data) != 0:
+            tx_timestamps = json.loads(res_data[0][3])
+            for t in tx_timestamps:
+                if float(t) == float(tx['timestamp']):
+                    return False
     
         return True
     # =============================================

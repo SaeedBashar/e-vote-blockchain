@@ -47,11 +47,59 @@
                   <input type="text" disabled class="form-control" value="{{data['block']['prev_hash']}}" id="inputCity">
                 </div>
                 <div class="col-12">
-                    <label for="inputAddress2" class="form-label">Transactions</label>
-                    <div class="form-floating">
+                    <h3 class="card-title">Transactions In Block</h3>
+                    <!--<div class="form-floating">
                       <textarea disabled class="form-control" placeholder="Address" id="floatingTextarea" style="height: 100px;">{{data['block']['data']}}</textarea>
                       <label for="floatingTextarea"></label>
+                    </div>-->
+                    <!--===========================================-->
+                    {% for tx in data['block']['data']%}
+                    <hr/>
+                    <div class="row">
+                      <div class="col-12">
+                          <div class="card">
+                              <div class="card-body">
+                                
+                                <form class="row g-3">
+                                  <div class="col-md-12">
+                                    <label for="inputName5" class="form-label">From Address</label>
+                                    <input type="text" disabled class="form-control" id="inputName5" value="{{tx['from_addr']}}">
+                                  </div>
+                                  <div class="col-md-12">
+                                      <label for="inputName5" class="form-label">To Address</label>
+                                      <input type="text" disabled class="form-control" id="inputName5" value="{{tx['to_addr']}}">
+                                    </div>
+                                  <div class="col-md-6">
+                                    <label for="inputEmail5" class="form-label">Value</label>
+                                    <input type="email" disabled class="form-control" id="inputEmail5" value="{{tx['value']}}">
+                                  </div>
+                                  <div class="col-md-6">
+                                    <label for="inputPassword5" class="form-label">Gas</label>
+                                    <input type="text" disabled class="form-control" id="inputPassword5" value="{{tx['gas']}}">
+                                  </div>
+                                  <div class="col-12">
+                                    <label for="inputAddress5" class="form-label">Timestamp</label>
+                                    <input type="text" disabled class="form-control" id="inputAddres5s" value="{{tx['timestamp']}}">
+                                  </div>
+                                  <div class="col-12">
+                                    <label for="inputAddress2" class="form-label">Transaction Hash</label>
+                                    <input type="text" disabled class="form-control" id="inputAddress2" value="{{tx['tx_hash']}}">
+                                  </div>
+                                  <div class="col-12">
+                                    <label for="Textarea">Arguments</label>
+                                      <div class="form-floating mt-2">
+                                        <textarea disabled class="form-control" placeholder="Address" id="textarea" style="height: 100px;">{{tx['args']}}</textarea>
+                                      </div>
+                                  </div>
+                                </form>
+                  
+                                </div>
+                              </div>
+                        </div>
                     </div>
+                    <hr/>
+                    {% endfor %}
+                    <!--===========================================-->
                 </div>
               </form>
 

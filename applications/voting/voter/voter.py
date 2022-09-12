@@ -32,7 +32,7 @@ def cxt_proc():
     
     def percent(el):
         if result_data !=  None:
-            return str((el/int(result_data['total_votes'])) * int(100))
+            return str(round((el/int(result_data['total_votes'])) * int(100),1))
     
     return {'upper': toUpper, 'percent': percent}
 
@@ -69,7 +69,7 @@ def login():
 
                         global voter_img
                         for x in response['election_info']['candidates']:
-                            voter_img[x['id']] = x['img']
+                            voter_img[x['id']] = x['img'] if x['img'] != "" or x['img'] != None else ""
                             x['img'] = ''
 
                         session['ELECTION_INFO'] = response['election_info']
@@ -91,7 +91,8 @@ def login():
             else:
                 return redirect('/voted')
         else:
-            return render_template('not-eligible.html')
+            t_data = {'message': data['message']}
+            return render_template('not-eligible.html', data=t_data)
         # return {'status': False, 'message': 'You are not eligible to vote'}
 
 @app.route('/index')
@@ -143,9 +144,9 @@ def submit_ballot():
     # =================================================================
 
     for miner in session['MINER_NODES']:
-        response = requests.post("http://" + miner + "/transactions",json=transaction)
+        response = requests.post("http://" + miner + "/transactions",json=transaction).json()
 
-    return {'status': True}
+    return jsonify(response)
 
 @app.route('/voted')
 def done_voting():

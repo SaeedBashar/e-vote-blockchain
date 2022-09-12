@@ -1,0 +1,10 @@
+{
+    "election_info": {
+        "id": 1234,
+        "portfolio": [],
+        "candidates": [
+            ],
+        "result": null
+    },
+    "miner_nodes": ["127.0.0.1:4000"]
+}

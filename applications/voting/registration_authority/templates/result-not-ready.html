@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <title>Result Not Ready</title>
+{% endblock  %}
+
+{% block body %}
+    <style>
+        .card {
+            width: 530px;
+            margin: auto;
+            margin-top: 70px;
+        }
+    </style>
+<!--<div class='vote-bg' style="position: fixed;width: 100%;height: 100%;background-image: url({{ url_for('static',filename ='images/vote3.jpg')}})">-->
+    <div class="card alert alert-danger">
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <h2 class="card-title">Election Results Not Ready Yet</h2>
+            <p class="card-text">You can come back and check later</p>
+            <button onclick="leaveSite()" class="btn btn-danger">Exit</button>
+        </div>
+    </div>
+<!--</div>-->
+    <script>
+        function leaveSite(){
+            window.location.assign('/')
+        }
+
+    </script>
+{% endblock %}
+

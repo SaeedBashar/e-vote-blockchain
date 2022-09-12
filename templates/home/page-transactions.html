@@ -1,7 +1,7 @@
 {% extends 'base-logged-in-pages.html' %}
 
 {% block head %}
-  <title>Transaction List</title>
+  <title>Node | Transaction List</title>
 
 {%endblock%}
 
@@ -64,7 +64,7 @@
                       <table class="table datatable">
                         <thead>
                           <tr>
-                            <th scope="col">#</th>
+                            <th scope="col">Block</th>
                             <th scope="col">From</th>
                             <th scope="col">To</th>
                             <th scope="col">Value</th>
@@ -72,16 +72,15 @@
                           </tr>
                         </thead>
                         <tbody id="trans">
-                          {% set i = 1%}
+                          
                           {% for n in data['mined_transactions'] %}
                             <tr>
-                              <th scope='row'> {{i}} </th>
+                              <th scope='row'> {{n['block_index']}} </th>
                               <td class=""> {{n['from_addr']}} </td>
                               <td class=""> {{n['to_addr']}} </td>
                               <td> {{n['value']}} </td>
                               <td> <a href="/get_transaction_by_hash?hash={{n['tx_hash']}}">details</a></td>
                             </tr>
-                            {% set i = i + 1 %}
                           {% endfor %}
                         </tbody>
                       </table>
