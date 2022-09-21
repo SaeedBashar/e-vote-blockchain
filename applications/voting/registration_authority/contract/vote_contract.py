@@ -22,52 +22,78 @@ def contract(action='init', args=[], state={}):
                         0 : 0,
                         1 : 0
                     },
-                    'secretary': {
-                        2 : 0,
-                        3 : 0
-                    },
-                    'treasurer': {
-                        4 : 0,
-                        5 : 0
+                    'parliament': {
+                        'cons1': {
+                            0 : 0,
+                            1 : 0
+                        },
+                        'cons2': {
+                            0 : 0,
+                            1 : 0
+                        }
                     }
                 }
-
-        election_stop_timer(60)
+                state['storage']['board'] = [
+                    {
+                        'party_id': 545,
+                        'party_name': 'party1',
+                        'public_key': """-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ
+gaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ
+0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB
+aeO8p+qhe1sp4IU9dwIDAQAB
+-----END PUBLIC KEY-----""",
+                        'approved': False
+                    }
+                ]
 
     def election_vote():
 
-        res = verify_transaction()
+        res = verify_transaction(verification_pub_key, args[1]['ballot_info']['sign_data'], args[1]['ballot_info']['signature'])
         if res['status'] == True:
+            
+            for b in state['storage']['board']:
+                if b['approved'] == False:
+                    return
+
             nonlocal election_in_progress
             if election_in_progress:
                 for k in list(args[1]['candidates'].keys()):
                     for k1 in state['storage']['candidates'].keys():
                         if k == k1:
-                            state['storage']['candidates'][k][args[1]['candidates'][k]] += 1
-                            break
+                            if k != 'parliament':
+                                state['storage']['candidates'][k][args[1]['candidates'][k]] += 1
+                                break
+                            else:
+                                state['storage']['candidates'][k][args[1]['ballot_info']['constituency']][args[1]['candidates'][k]] += 1
+                                break
+
                 state['storage']['total_votes'] += 1
-     
-    def election_stop_timer(stop_time):
+    
+    def board_consent():
+        for b in state['storage']['board']:
+            if args[1]['public_key'] == b['public_key']:
+                res = verify_transaction(
+                    args[1]['public_key'], 
+                    args[1]['sign_data'], 
+                    args[1]['signature']
+                )
 
-        def stop_election():
-            nonlocal election_in_progress
-            election_in_progress = False
+                if res['status'] == True:
+                    b['approved'] = True
+                break
 
-        timer = Timer(stop_time, stop_election)
-        timer.start()
-
-    def verify_transaction():
-        data = args[1]['ballot_info']['sign_data']
+    def verify_transaction(pk, data, sig):
         tmp = ""
         for x in data:
             tmp += x
         
         h = SHA256.new(tmp.encode())
         try:
-            pub_key = RSA.importKey(verification_pub_key.encode())
+            pub_key = RSA.importKey(pk.encode())
             verifier = PKCS1_v1_5.new(pub_key)
 
-            verifier.verify(h, args[1]['ballot_info']['signature'].encode())
+            verifier.verify(h, sig.encode())
             return {
                 'status': True,
                 'msg': 'Verification Success'
@@ -89,6 +115,8 @@ def contract(action='init', args=[], state={}):
         election_main()
     elif action == 'vote_cast':
         election_vote()
+    elif action == 'consent':
+        board_consent()
     else:
         pass
 

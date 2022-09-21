@@ -8,63 +8,37 @@
 {% block subbody %}
 <main id="main" class="main">
     <div class="card-body pb-0">
-    <h5 class="card-title">ELECTION Transactions</h5>
+    <h5 class="card-title">ELECTION TRANSACTIONS</h5>
 
     <div class="container">
         <div class="row">
-            {% for tx in  data['transactions'] %}
-                    <div class="col-12">
-                        <div class="card" style="width: 100%">
-                            <div>
-                                Voter Address : <br/><p>{{tx['from_addr']}}</p>
-                            </div>
-                            Voted Candidates <br/>
-                        </div>
-                        <div class="card" style="width: 100%">
-                            <div class="card-body">
-                                <div>
-                                    <p>
-                                        President :
-                                        {% for c in data['c_names']%}
-                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['president'])%}
-                                                {{c['name']}}
-                                            {% endif %}
-                                        {% endfor %}
-                                    </p>
-                                <div>
-                            </div>
-                        </div>
-                        <div class="card" style="width: 100%">
-                            <div class="card-body">
-                                <div>
-                                    <p>
-                                        Secretary :
-                                        {% for c in data['c_names']%}
-                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['secretary'])%}
-                                                {{c['name']}}
-                                            {% endif %}
-                                        {% endfor %}
-                                    </p>
-                                </div>
-                                
-                            </div>
-                        </div>
-                        <div class="card" style="width: 100%">
-                            <div class="card-body">
-                                <div>
-                                    <p>
-                                        Treasurer :
-                                        {% for c in data['c_names']%}
-                                            {% if toStr(c['id']) == toStr(tx['args'][1]['candidates']['treasurer'])%}
-                                                {{c['name']}}
-                                            {% endif %}
-                                        {% endfor %}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+            {% for trans in data['transactions'] %}
+            <div class="col-6">
+                <div class="card alert alert-info">
+                    <div class="card-header" style="font-size: 12px">
+                        VOTER ADDRESS <br/>
+                        <hr/>
+                        {{ trans['from_addr']}}
                     </div>
-            {% endfor %}  
+                    <div class="card-body">
+                        <h2 class="card-title" style="color: #055160"> PRESIDENT :
+                            {% for ps in data['presidents'] %}
+                                {% if ps['id'] == trans['args'][1]['candidates']['president'] %}
+                                    {{ps['name']}}
+                                {% endif %}
+                            {% endfor %}
+                        </h2>
+                        <p class="card-text"> PARLIAMENT :
+                            {% for pr in data['parliaments'][trans['args'][1]['ballot_info']['constituency']] %}
+                                {% if pr['id'] == trans['args'][1]['candidates']['parliament'] %}
+                                    {{pr['name']}}
+                                {% endif %}
+                            {% endfor %}
+                        </p>
+                    </div>
+                </div>
+            </div>    
+            {% endfor %}
         </div>
     </div>
 

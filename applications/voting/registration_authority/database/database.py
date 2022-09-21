@@ -7,8 +7,35 @@ import os.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "evoting.sqlite3")
 
+def add_registrar(data):
+    query = "INSERT INTO Registrar VALUES(?, ?, ?, ?, '', '')"
+    try:
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(query, data)
+            conn.commit()
+
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+def get_registrar(arg):
+    query = "SELECT * FROM Registrar WHERE uname = ? AND pword = ?"
+
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, arg)
+        return cursor.fetchall()
+
+def update_registrar_info(arg):
+    query = "UPDATE Registrar set public_key = ?, private_key = ? where uname=? and pword=?"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(query, arg)
+        conn.commit()
+
+    return True
+
 def auth_registrar(arg):
-    query = "SELECT * FROM Registrar WHERE name = ? AND pword = ?"
+    query = "SELECT * FROM Registrar WHERE uname = ? AND pword = ?"
     with sqlite3.connect(db_path) as conn:
         cursor = conn.execute(query, arg)
         return cursor.fetchall()
@@ -25,7 +52,6 @@ def get_data(arg, data):
         with sqlite3.connect(db_path) as conn:
             cursor = conn.execute(query, data)
             out = cursor.fetchall()[0]
-            print(out)
             return out
 
 def get_user(data):
@@ -66,3 +92,69 @@ def check_if_verified(id):
             return x[0]
 
         return x
+
+def add_candidate(portfolio, arg):
+
+    if portfolio == 'pres':
+        query = "INSERT INTO President VALUES(?, ?, ?, ?, ?, ?)"
+
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(query, arg)
+            conn.commit()
+    elif portfolio == 'parl':
+        query = "INSERT INTO Parliament VALUES(?, ?, ?, ?, ?, ?)"
+
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(query, arg)
+            conn.commit()
+
+def add_party(arg):
+    query = "INSERT INTO Party VALUES(?, ?, ?)"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(query, arg)
+        conn.commit()
+
+def get_presidents():
+    query = "SELECT * FROM President"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query)
+        return cursor.fetchall()
+
+def get_parliaments():
+    query = "SELECT * FROM Parliament"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query)
+        return cursor.fetchall()
+
+def get_parliaments_by_constituency(arg):
+    query = "SELECT * FROM Parliament WHERE constituency = ?"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, (arg, ))
+        return cursor.fetchall()
+
+def get_parties():
+    query = "SELECT * FROM Party"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query)
+        return cursor.fetchall()
+        
+def get_party_name(arg):
+    query = "SELECT name FROM Party where id = ?"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, (arg,))
+        return cursor.fetchall()[0][0]
+
+def get_election(arg=''):
+    query = "SELECT * FROM Election where id = ?"
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(query, (arg,))
+        return cursor.fetchall()
+
+def update_election(res, arg=''):
+    query = "UPDATE Election set result = ? where id = ?"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(query, (json.dumps(res), arg))
+        conn.commit()
+
+    return True

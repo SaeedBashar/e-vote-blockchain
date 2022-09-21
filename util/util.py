@@ -130,19 +130,19 @@ def get_contract(addr):
         d1 = dt.now()
         t1 = dt.timestamp(d1)
         
-        if t1 < float(res_data[0][1]):
-            return {'status': False, 'message': 'No Such Contract!!'}
+        # if t1 < float(res_data[0][1]):
+        #     return {'status': False, 'message': 'No Such Contract!!'}
         
-        elif t1 >= float(res_data[0][1]) and t1 <= float(res_data[0][2]):
-            return {'status': False, 'message': 'Contract is still in progress, can not get result now.!!'}
+        # elif t1 >= float(res_data[0][1]) and t1 <= float(res_data[0][2]):
+        #     return {'status': False, 'message': 'Contract is still in progress, can not get result now.!!'}
         
-        else:
-            state = db.get_state(addr)[0]
-            data = {
-                'status': True,
-                'contract_result': json.loads(state[4])
-            }
-            return data
+        # else:
+        state = db.get_state(addr)[0]
+        data = {
+            'status': True,
+            'contract_result': json.loads(state[4])
+        }
+        return data
 
     return {'status': False, 'message': 'No Such Contract!!'}
 

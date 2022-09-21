@@ -1,0 +1,58 @@
+{% extends 'base-logged-in-pages.html' %}
+
+{% block head %}
+    <title>Election Results</title>
+   
+{% endblock  %}
+
+{% block subbody %}
+<main id="main" class="main">
+    <div class="card-body pb-0">
+        <div class="pagetitle">
+            <h1>Election Status</h1>
+            <nav>
+              <ol class="breadcrumb">
+                <li class=""><button onclick='approve()' class="btn btn-info text-white">Approve</button></li>
+                <script>
+                    function approve(){
+                        fetch('/approve-election')
+                        .then(x=>x.json())
+                        .then(x=>{
+                            if(x.status == true){
+                                alert("Approved Successfully!!")
+                            }
+                        })
+                    }
+                </script>
+            </ol>
+            </nav>
+          </div>
+        <div class="container">
+            <div class="row">
+                {% for b in data %}
+                <div class="col-6">
+                    <div class="card alert alert-info">
+                        <div class="card-header" style="font-size: 12px">
+                            BOARD ADDRESS <br/>
+                            <hr/>
+                            {{ b['public_key']}}
+                        </div>
+                        <div class="card-body">
+                            <h2 class="card-title" style="color: #055160"> PARTY ID :
+                                {{b['party_id']}}
+                            </h2>
+                            <p class="card-text"> PARTY NAME :
+                                {{b['party_name']}}
+                            </p>
+                            <p class="card-text"> APPROVED? :
+                                {{b['approved']}}
+                            </p>
+                        </div>
+                    </div>
+                </div>    
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

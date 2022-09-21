@@ -33,8 +33,11 @@ def cxt_proc():
     def percent(el):
         if result_data !=  None:
             return str(round((el/int(result_data['total_votes'])) * int(100),1))
+
+    def remove_space(el):
+        return el.replace(' ', '')
     
-    return {'upper': toUpper, 'percent': percent}
+    return {'upper': toUpper, 'percent': percent, 'r_space': remove_space}
 
 @app.route('/')
 def home():
@@ -69,7 +72,7 @@ def login():
 
                         global voter_img
                         for x in response['election_info']['candidates']:
-                            voter_img[x['id']] = x['img'] if x['img'] != "" or x['img'] != None else ""
+                            voter_img[x['name'].replace(' ', '')] = x['img'] if x['img'] != "" or x['img'] != None else ""
                             x['img'] = ''
 
                         session['ELECTION_INFO'] = response['election_info']
@@ -77,6 +80,7 @@ def login():
                         session['MINER_NODES'] = response['miner_nodes']
                         session['SIGNATURE'] = response['signature']
                         session['uid'] = response['user_id']
+                        session['constituency'] = response['constituency']
                         session['isLoggedIn'] = True
                         session['uname'] = uname
 
@@ -136,8 +140,9 @@ def submit_ballot():
     transaction['args'].append({
                             'candidates': voted_candidates,
                             'ballot_info': {
+                                            'constituency': session['constituency'],
                                             'signature': session['SIGNATURE'], 
-                                            'sign_data': [session['uname'], session['uid']]
+                                            'sign_data': transaction['args'][0]['sign_data']
                                         }
                             })
     
@@ -162,21 +167,20 @@ def leave():
 @app.route('/get-result')
 def get_results():
     
-    response = requests.get('http://127.0.0.1:7000/get-result-for-user')
-    response = response.json()
+    response = requests.get('http://127.0.0.1:7000/get-result-for-user?constituency=cons1')
+    try:
+        response = response.json()
 
-    if response['status'] == True:
-        global result_data
-        result_data = response['data']['populate_data']
+        if response['status'] == True:
+            global result_data
+            result_data = response['data']
 
-        data = {
-            'portfolio': response['data']['populate_data']['portfolio'],
-            'cands': response['data']['view_data']
-        }
-        print(data)
-        return render_template('/check-results.html', data=data)
-    else:
+            return render_template('/check-results.html', data=result_data)
+        else:
+            return render_template('/result-not-ready.html')
+    except:
         return render_template('/result-not-ready.html')
+
 
 @app.route('/get-result-data')
 def get_result_data():

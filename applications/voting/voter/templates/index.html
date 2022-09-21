@@ -61,7 +61,7 @@
                             }
                         </style>
                         <div class="candimg">
-                            <img style="" src="{{ data['imgs'][cand['id']]}}" class="img-fluid rounded-start cand-img" alt="...">
+                            <img style="" src="{{ data['imgs'][r_space(cand['name'])]}}" class="img-fluid rounded-start cand-img" alt="...">
                         </div>
                         <div class="card-body">
                             <h5 class="card-title">{{cand['name']}}</h5>
@@ -97,7 +97,7 @@
             for(let k of Object.getOwnPropertyNames(votedList)){
                 data[k] = votedList[k]
             }
-
+            
             fetch('/submit-ballot',{
                 method: "POST",
                 mode: "cors",

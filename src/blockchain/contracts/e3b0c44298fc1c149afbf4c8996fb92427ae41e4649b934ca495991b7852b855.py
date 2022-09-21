@@ -22,17 +22,30 @@ def contract(action='init', args=[], state={}):
                         0 : 0,
                         1 : 0
                     },
-                    'secretary': {
-                        2 : 0,
-                        3 : 0
-                    },
-                    'treasurer': {
-                        4 : 0,
-                        5 : 0
+                    'parliament': {
+                        'cons1': {
+                            0 : 0,
+                            1 : 0
+                        },
+                        'cons2': {
+                            0 : 0,
+                            1 : 0
+                        }
                     }
                 }
-
-        election_stop_timer(60)
+                state['storage']['board'] = [
+                    {
+                        'party_id': 545,
+                        'party_name': 'party1',
+                        'public_key': """-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ
+gaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ
+0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB
+aeO8p+qhe1sp4IU9dwIDAQAB
+-----END PUBLIC KEY-----""",
+                        'approved': False
+                    }
+                ]
 
     def election_vote():
 
@@ -43,18 +56,17 @@ def contract(action='init', args=[], state={}):
                 for k in list(args[1]['candidates'].keys()):
                     for k1 in state['storage']['candidates'].keys():
                         if k == k1:
-                            state['storage']['candidates'][k][args[1]['candidates'][k]] += 1
-                            break
+                            if k != 'parliament':
+                                state['storage']['candidates'][k][args[1]['candidates'][k]] += 1
+                                break
+                            else:
+                                state['storage']['candidates'][k][args[1]['ballot_info']['constituency']][args[1]['candidates'][k]] += 1
+                                break
+
                 state['storage']['total_votes'] += 1
-     
-    def election_stop_timer(stop_time):
-
-        def stop_election():
-            nonlocal election_in_progress
-            election_in_progress = False
-
-        timer = Timer(stop_time, stop_election)
-        timer.start()
+    
+    def board_consent():
+        pass
 
     def verify_transaction():
         data = args[1]['ballot_info']['sign_data']

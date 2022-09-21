@@ -6,7 +6,9 @@
 body {
   font-family: "Open Sans", sans-serif;
   background: #f6f9ff;
-  color: #444444;
+  color: #387b88;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 a {
@@ -43,13 +45,6 @@ h1, h2, h3, h4, h5, h6 {
 .pagetitle {
   margin-bottom: 10px;
 }
-.pagetitle h1 {
-  font-size: 24px;
-  margin-bottom: 0;
-  font-weight: 600;
-  color: #012970;
-}
-
 
 /* Card */
 .card {
@@ -71,7 +66,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 20px 0 15px 0;
   font-size: 18px;
   font-weight: 500;
-  color: #012970;
+  color: #5ADBF4;
   font-family: "Poppins", sans-serif;
 }
 .card-title span {
@@ -131,7 +126,7 @@ h1, h2, h3, h4, h5, h6 {
 .logo span {
   font-size: 26px;
   font-weight: 700;
-  color: #012970;
+  color: #5ADBF4;
   font-family: "Nunito", sans-serif;
 }
 
@@ -149,7 +144,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 32px;
   padding-left: 10px;
   cursor: pointer;
-  color: #012970;
+  color: #5ADBF4;
 }
 
 /*--------------------------------------------------------------
@@ -164,7 +159,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .header-nav .nav-icon {
   font-size: 20px;
-  color: #012970;
+  color: #5ADBF4;
 }
 
 
@@ -244,8 +239,8 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   font-size: 15px;
   font-weight: 600;
-  color: #4154f1;
   transition: 0.3;
+  color: #387b88;
   background: #f6f9ff;
   padding: 10px 15px;
   border-radius: 4px;
@@ -256,7 +251,7 @@ h1, h2, h3, h4, h5, h6 {
   color: #4154f1;
 }
 .sidebar-nav .nav-link.collapsed {
-  color: #012970;
+  color: #5ADBF4;
   background: #fff;
 }
 .sidebar-nav .nav-link.collapsed i {
@@ -286,7 +281,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   font-size: 14px;
   font-weight: 600;
-  color: #012970;
+  color: #5ADBF4;
   transition: 0.3;
   padding: 10px 0 10px 40px;
   transition: 0.3s;

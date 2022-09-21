@@ -6,7 +6,7 @@
 
 {% block body %}
   <style>
-    .card {
+    .card-info {
         width: 530px;
         margin: auto;
         margin-top: 70px;
@@ -20,7 +20,7 @@
       <i class="bi bi-list toggle-sidebar-btn"></i>
     </div>
     <div id="id03" class="cus-modal animate" style="margin-left: 300px;width:80%">
-      <div class="card alert alert-info">
+      <div class="card-info alert alert-info">
         <div class="card-header" style="font-size: 25px">
             Information
         </div>
@@ -36,62 +36,67 @@
         
 
         <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-          <!--<span class="d-none d-md-block dropdown-toggle ps-2">K. Anderson</span>-->
-          <span><button class="btn btn-info" style="background:#4154F1;color: white ">Configure Election</button></span>
-        </a><!-- End Profile Iamge Icon -->
+          <span><button class="btn btn-info text-white" style="margin-bottom: 5px">Configure Election</button></span>
+        </a>
 
         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow" style="width: 240px">
-          <li class="dropdown-header">
-            <p>Election Start Time</p>
-            <form action="">
-              <div class="row mb-3">
-                <label for="inputDate" class="col-sm-2 col-form-label">Date</label>
-                <div class="col-sm-10">
-                  <input type="date" id="start_date" class="form-control">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label for="inputTime" class="col-sm-2 col-form-label">Time</label>
-                <div class="col-sm-10">
-                  <input type="time" id="start_time" class="form-control">
-                </div>
-              </div>
-            </form>
-          </li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
-
-          <li class="dropdown-header">
-            <p>Election End Time</p>
-            <form action="">
-              <div class="row mb-3">
-                <label for="inputDate" class="col-sm-2 col-form-label">Date</label>
-                <div class="col-sm-10">
-                  <input type="date" id="end_date" class="form-control">
-                </div>
-              </div>
-              <div class="row mb-3">
-                <label for="inputTime"  class="col-sm-2 col-form-label">Time</label>
-                <div class="col-sm-10">
-                  <input type="time" id="end_time" class="form-control">
-                </div>
-              </div>
-            </form>
-          </li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
-
-          <li>
-            <button onclick="startElection()" class="dropdown-item d-flex" style="text-align: center; display: block!important">
-              START ELECTION
-            </button>
-          </li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
-
+          <div class="cus-dropdown">
+            <button class="btn btn-info text-white">Start New Election</button>
+            <div class="cus-dropdown-content">
+              <ul>
+                <li class="dropdown-header">
+                  <p>Election Start Time</p>
+                  <form action="">
+                    <div class="row mb-3">
+                      <label for="inputDate" class="col-sm-2 col-form-label">Date</label>
+                      <div class="col-sm-10">
+                        <input type="date" id="start_date" class="form-control">
+                      </div>
+                    </div>
+                    <div class="row mb-3">
+                      <label for="inputTime" class="col-sm-2 col-form-label">Time</label>
+                      <div class="col-sm-10">
+                        <input type="time" id="start_time" class="form-control">
+                      </div>
+                    </div>
+                  </form>
+                </li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+      
+                <li class="dropdown-header">
+                  <p>Election End Time</p>
+                  <form action="">
+                    <div class="row mb-3">
+                      <label for="inputDate" class="col-sm-2 col-form-label">Date</label>
+                      <div class="col-sm-10">
+                        <input type="date" id="end_date" class="form-control">
+                      </div>
+                    </div>
+                    <div class="row mb-3">
+                      <label for="inputTime"  class="col-sm-2 col-form-label">Time</label>
+                      <div class="col-sm-10">
+                        <input type="time" id="end_time" class="form-control">
+                      </div>
+                    </div>
+                  </form>
+                </li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
+      
+                <li>
+                  <button onclick="startElection()" class="dropdown-item d-flex" style="text-align: center; display: block!important">
+                    START ELECTION
+                  </button>
+                </li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>    
+              </ul>
+            </div>
+          </div>
         </ul>
       </li>
     </nav>

@@ -1,0 +1,300 @@
+
+  {% extends 'base-logged-in-pages.html' %}
+
+  {% block head %}
+    <title>Board Member</title>
+   
+  {%endblock%}
+
+  {% block subbody%}
+
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <h1>Dashboard</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="" style="margin-right: 5px"><button class="btn btn-info text-white" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="0" aria-label="Slide 2">Presidential Candidate</button></li>
+          <li class="" style="margin-right: 5px"><button class="btn btn-info text-white" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="1" aria-label="Slide 2">Parliamentary Candidates</button></li>
+          <li class=""><button class="btn btn-info text-white" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="2" aria-label="Slide 3">View Candidates</button></li>
+        </ol>
+      </nav>
+    </div>
+    <div id="carouselExampleCaptions" class="carousel slide carousel-fade" data-bs-touch="false" data-bs-interval="false">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
+          <form class="cus-modal-content animate">
+            <div class="imgcontainer">
+              <h2>Presidential Candidate</h2>
+            </div>
+        
+            <div class="container">
+              <div class="col-12">
+                <label for="inputEmail4" class="form-label">Candidate Name</label>
+                <input type="name" class="form-control" id="name">
+              </div>
+              <div class="row mt-3 mb-3" style="padding-left: 15px; padding-right: 15px">
+                <div class="col-6">
+                  <label for="inputEmail4" class="form-label">Portfolio</label>
+                  <select id="portfolio" name="portfolio" class="form-select">
+                    <option value=""></option>
+                    <option value="president">president</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label for="inputEmail4" class="form-label">Age</label>
+                  <input type="number" name="age" class="form-control" id="age">
+                </div>
+              </div>
+              <div class="col-12 mt-3 mb-3">
+                <input type="file" name="cand_img" id="cand_img" class="form-control">
+              </div>
+              <div class="col-12">
+                <div class="form-floating">
+                  <textarea class="form-control" name="description" placeholder="Address" id="description" style="height: 100px;"></textarea>
+                  <label for="inputEmail4" class="form-label">Description</label>
+                </div>
+              </div>
+              <button class="btn btn-info text-white" type="button" onclick="encodeImage('cand_img', addPresident)">Add To Candidates</button>
+            </div>
+          </form>
+        </div>
+        <div class="carousel-item">
+          <form class="cus-modal-content animate">
+            <div class="imgcontainer">
+              <h2>Parliamentary Candidate</h2>
+            </div>
+        
+            <div class="container">
+              <div class="col-12">
+                <label for="inputEmail4" class="form-label">Candidate Name</label>
+                <input type="text" class="form-control" id="p_name">
+              </div>
+              <div class="row mt-3 mb-3" style="padding-left: 15px; padding-right: 15px">
+                <div class="col-6">
+                  <label for="inputEmail4" class="form-label">Constituency</label>
+                  <select id="p_constituency" name="constituency" class="form-select">
+                    <option value=""></option>
+                    <option value="cons1">cons1</option>
+                    <option value="cons2">cons2</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label for="inputEmail4" class="form-label">Age</label>
+                  <input type="number" name="age" class="form-control" id="p_age">
+                </div>
+              </div>
+              <div class="col-12 mt-3 mb-3">
+                <input type="file" onchange="temp = this" name="p_cand_img" id="p_cand_img" class="form-control">
+              </div>
+              <div class="col-12">
+                <div class="form-floating">
+                  <textarea class="form-control" name="description" placeholder="Address" id="p_description" style="height: 100px;"></textarea>
+                  <label for="inputEmail4" class="form-label">Description</label>
+                </div>
+              </div>
+              <button class="btn btn-info text-white" type="button" onclick="encodeImage('p_cand_img', addParliament)">Add To Candidates</button>
+            </div>
+          </form>
+        </div>
+        <div class="carousel-item">
+          <div class="item-main" id="item-main">
+            <h3>President</h3>
+            <div class="item-pres" id="item-pres">
+              {% for p in data['pres'] %}
+                <div class="mb-3">
+                  <div class="row g-0">
+                    <div class="col-md-4">
+                      <img src="{{p['imgByte']}}" style="max-height:400px" alt="...">
+                    </div>
+                    <div class="col-md-8">
+                      <div class="card-body">
+                        <h3 class="card-title">Name : {{p['name']}}</h3>
+                        <p>Age : {{p['age']}} </p>
+                        <p class="card-text">Description : {{p['desc']}} </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            <h3>Member Of Parliaments</h3>
+            <div class="item-parl" id="item-parl">
+              {% for c in data['parl'] %}
+                {% for p in data['parl'][c] %}
+                  <div class="mb-3">
+                    <div class="row g-0">
+                      <div class="col-md-4">
+                        <img src="{{p['imgByte']}}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
+                      </div>
+                      <div class="col-md-8">
+                        <div class="card-body">
+                          <h3 class="card-title">Name : {{p['name']}} </h3>
+                          <p>Age : {{p['age']}}</p>
+                          <p>Constituency : {{p['constituency']}} </p>
+                          <p class="card-text">Description : {{p['description']}} </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endfor %}  
+            </div>
+            <div>
+              <button onclick="submitData()" class="btn btn-info btn-block text-white">Submit To RA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      var party_data = {
+        party_name: 'party1',
+        party_id: 545,
+        presidential: null,
+        parliamentary: []
+      }
+      
+      function getEl(el){
+        return document.getElementById(el)
+      }
+
+      function encodeImage(tgt, cb){
+        el = getEl(tgt)
+        
+        if(el.files.length != 0){
+          var file = el.files[0];
+          //var file = el.files[0];
+          var reader = new FileReader();
+
+          reader.onloadend = function(){
+              
+              let data = reader.result
+              //data = data
+              cb(data)
+              //getEl('cand_img').files = []
+          }
+          x = reader.readAsDataURL(file)
+        }else{
+          cb(null);
+        }
+        
+      }
+
+      function addPresident(imgByte){
+        if(isValid()){
+          let data = {
+            name : getEl('name').value,
+            age : getEl('age').value,
+            description : getEl('description').value,
+            portfolio : getEl('portfolio').value,
+            imgByte : imgByte
+          }
+          party_data.presidential = data
+          console.log(party_data)
+          alert('Candidate added Successfully!!')
+          getEl('name').value = "";
+          getEl('age').value = "";
+          getEl('description').value = "";
+          getEl('portfolio').value = "";
+
+          getEl('item-pres').innerHTML += `
+                              <div class="mb-3">
+                                <div class="row g-0">
+                                  <div class="col-md-4">
+                                    <img src="${party_data.presidential.imgByte}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
+                                  </div>
+                                  <div class="col-md-8">
+                                    <div class="card-body">
+                                      <h3 class="card-title">Name : ${party_data.presidential.name}</h3>
+                                      <p>Age : ${party_data.presidential.age}</p>
+                                      <p class="card-text">Description : ${party_data.presidential.description}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+          `
+          
+        }else{
+          alert("All fields are required!!")
+        }
+      }
+
+      function addParliament(imgByte){
+          let parl_data = {
+            name : getEl('p_name').value,
+            age : getEl('p_age').value,
+            description : getEl('p_description').value,
+            constituency : getEl('p_constituency').value,
+            imgByte : imgByte
+          }
+          party_data.parliamentary.push(parl_data)
+          console.log(party_data)
+          
+          alert("Candidate Added Successfully!!");
+
+          getEl('p_name').value = "";
+          getEl('p_age').value = "";
+          getEl('p_description').value = "";
+          getEl('p_constituency').value = "";
+
+          getEl('item-parl').innerHTML += `
+                                <div class="mb-3">
+                                  <div class="row g-0">
+                                    <div class="col-md-4">
+                                      <img src="${parl_data.imgByte}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
+                                    </div>
+                                    <div class="col-md-8">
+                                      <div class="card-body">
+                                        <h3 class="card-title">Name : ${parl_data.name}</h3>
+                                        <p>Age : ${parl_data.age}</p>
+                                        <p>Constituency : ${parl_data.constituency}</p>
+                                        <p class="card-text">Description : ${parl_data.description}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+          `
+      }
+      function isValid(){
+        let isvalid = true
+        
+        if( getEl('name').value == null || getEl('name').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('age').value == null || getEl('age').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('description').value == null || getEl('description').value== ""){ 
+          isvalid = false
+        }
+        if( getEl('portfolio').value == null || getEl('portfolio').value== ""){ 
+          isvalid = false
+        }
+
+        return isvalid;
+      }
+      
+      function submitData(){
+        fetch('/submit-data',{
+            method: "POST",
+            mode: "cors",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(party_data)
+          })
+          .then(x=>x.json())
+          .then(x=>{
+            console.log(x)
+            alert("Submitted Successfully")
+          })
+          .catch(e=>console.log(e))
+      }
+
+    </script>
+
+  </main>
+  
+  {%endblock%}

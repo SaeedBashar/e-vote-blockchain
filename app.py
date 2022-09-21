@@ -153,6 +153,10 @@ def register():
 
             status = db.add_user((name, email, uname, pword))
             if status:
+                session['name'] = name
+                session['email'] = email
+                session['u_name'] = uname
+                session['password'] = pword
                 return redirect('/key-generate')
             else:
                 return jsonify({'message': 'An Error Occured while creating record!!'})
@@ -338,8 +342,7 @@ def get_contract_result():
     
     response = get_contract(data['contract_addr'])
     
-    return jsonify(response
-    )
+    return jsonify(response)
 
 @app.route('/connect-node', methods=['GET', 'POST'])
 def connect_node():

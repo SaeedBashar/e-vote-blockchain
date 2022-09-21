@@ -10,42 +10,80 @@
     <h5 class="card-title" style="text-align: center;">ELECTION RESULT</h5>
 
     <div class="container">
-        {% for p in data['portfolio'] %}
-            <h3>{{upper(p)}}</h3>
-            <div id="{{p}}" class="row">
-                <div class="col-md-8 pt-5">   
-                    <div class="row">
-                            {% for p1 in  data['cands'][p]%}
-                                <div class="col-6">
-                                    <div class="card" style="width: 100%">
-                                        <div class="card-body">
-                                            <h5 class="card-title" style="color: #5C7BD9">{{p1['name']}}</span></h5>
-                        
-                                            <div class="d-flex align-items-center">
-                                                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                                                    <i class="bi bi-bar-chart"></i>
-                                                </div>
-                                                <div class="ps-3">
-                                                    <h6 style="margin-top: 7px">{{p1['vote_count']}}</h6>
-                                                </div>
-                                                <span class="text-success small pt-1 fw-bold" style="font-size: 25px;
-                                                text-align: right;
-                                                display: block;
-                                                width: 100%;">
-                                                    {{ percent(p1['vote_count']) + "%" }}
-                                                </span>
-                                            </div>
+        <h3>PRESIDENT</h3>
+        <div id="president" class="row">
+            <div class="col-md-8">   
+                <div class="row">
+                        {% for p in data['presidents'] %}
+                    
+                        <div class="col-6">
+                            <div class="card" style="width: 100%">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{p['name']}}</span></h5>
+                
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-bar-chart"></i>
                                         </div>
+                                        <div class="ps-3">
+                                            <h6 style="margin-top: 7px">{{p['vote_count']}}</h6>
+                                        </div>
+                                        <span class="text-success small pt-1 fw-bold" style="font-size: 25px;
+                                        text-align: right;
+                                        display: block;
+                                        width: 100%;">
+                                            {{ percent(p['vote_count']) + "%" }}
+                                        </span>
                                     </div>
                                 </div>
-                            {% endfor %}
+                            </div>
                         </div>
-                    </div>
-                <div class="col-md-4">
-                    <div id="{{p}}-chart" style="min-height: 400px;" class="echart"></div>
+                    
+                        {% endfor %}
                 </div>
             </div>
-        {% endfor %}
+                <div class="col-md-4">
+                    <div id="president-chart" style="min-height: 400px;" class="echart"></div>
+                </div>
+        </div>
+
+        <h3>PARLIAMENT</h3>
+        <div id="parliament" class="row">
+            <div class="col-md-8">   
+                <div class="row">
+                        {% for p in data['parliaments'] %}
+                    
+                        <div class="col-6">
+                            <div class="card" style="width: 100%">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{p['name']}}</span></h5>
+                
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-bar-chart"></i>
+                                        </div>
+                                        <div class="ps-3">
+                                            <h6 style="margin-top: 7px">{{p['vote_count']}}</h6>
+                                        </div>
+                                        <span class="text-success small pt-1 fw-bold" style="font-size: 25px;
+                                        text-align: right;
+                                        display: block;
+                                        width: 100%;">
+                                            {{ percent(p['vote_count']) + "%" }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        {% endfor %}
+                </div>
+            </div>
+                <div class="col-md-4">
+                    <div id="parliament-chart" style="min-height: 400px;" class="echart"></div>
+                </div>
+        </div>
+
     </div>
 
     <script>
@@ -62,8 +100,27 @@
         })
 
         setTimeout(()=>{
-            cands = data.result.candidates
-            for(let i in cands){
+            //cands = data.result.candidates
+            
+            pres = []
+            for(p of data.presidents){
+                pres.push({
+                    value : p.vote_count,
+                    name : p.name
+                })
+            }
+            construct_chart('president', pres)
+
+            parl = []
+            for(p of data.parliaments){
+                parl.push({
+                    value : p.vote_count,
+                    name : p.name
+                })
+            }
+            construct_chart('parliament', parl)
+
+            /*for(let i in cands){
                 tmp[i] = []
 
                 for(let j in cands[i]){
@@ -76,10 +133,10 @@
                         }
                     }
                 }
-            }
+            }*/
             
 
-            for(let i in tmp){
+            /*for(let i in tmp){
                 console.log(tmp[i])
                 echarts.init(document.querySelector("#" + i + "-chart")).setOption({
                     tooltip: {
@@ -111,12 +168,47 @@
                     data: tmp[i]
                     }]
                 });
+            }*/
+
+            function construct_chart(tgt, arr){
+                console.log(arr)
+                echarts.init(document.querySelector("#" + tgt + "-chart")).setOption({
+                    tooltip: {
+                    trigger: 'item'
+                    },
+                    legend: {
+                    top: '5%',
+                    left: 'center'
+                    },
+                    series: [{
+                    name: tgt,
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: arr
+                    }]
+                });
             }
             
-        }, 3000)
+        }, 6000)
       });
 
     </script>
+
 
     </div>
 </main>
