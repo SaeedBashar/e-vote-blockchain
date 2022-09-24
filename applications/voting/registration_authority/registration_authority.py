@@ -10,6 +10,7 @@ import json
 import codecs
 import requests
 import os
+from uuid import uuid4
 
 import Crypto
 import Crypto.Random
@@ -40,7 +41,7 @@ def cxt_proc():
         return str(el).upper()
     
     def percent(el):  
-        result = json.loads(db.get_election()[0][3])
+        result = json.loads(db.get_election()[0][2])
         return str(round((el/int(result['total_votes'])) * int(100),1))
 
     def toStr(el):
@@ -50,6 +51,10 @@ def cxt_proc():
         return len(el)
     
     return {'upper': toUpper, 'percent': percent, 'toStr': toStr, 'len': length}
+
+
+# ===================================
+# APIs used by Registration Authority
 
 @app.route('/')
 def index():
@@ -151,18 +156,6 @@ def generate():
     else:
         return redirect('/login')
 
-def generate_key():
-        key = RSA.generate(1024)
-        priv_key = key.exportKey()
-        pub_key = key.publickey().exportKey()
-        
-        keys = {
-            'private_key': priv_key.decode(),
-            'public_key': pub_key.decode()
-        }
-
-        return keys
-
 @app.route('/home')
 def home():
     if 'name' in session:
@@ -205,51 +198,6 @@ def home():
         return render_template('index.html', data = data)
     
     return redirect('/login')
-
-# @app.route('/add-candidate', methods=['POST'])
-# def add_candidate():
-#     if 'name' in session:
-
-#         data = request.get_json()
-#         c_name = data["name"]
-#         c_portfolio = data["portfolio"]
-#         c_age = data["age"]
-#         c_desc = data["description"]
-#         c_img = data['imgByte']
-
-#         if c_img != None:
-#             path = Path('database/cand_imgs.json')
-#             data = json.loads(path.read_text())
-#             data[c_name.replace(' ', '')] = c_img
-#             path.write_text(json.dumps(data))
-
-#         cand_l = len(ELECTION_INFO['candidates'])
-#         ELECTION_INFO['candidates'].append({
-#             'id': cand_l,
-#             'name': c_name,
-#             'desc': c_desc,
-#             'age': c_age,
-#             'portfolio': c_portfolio
-#         })
-
-#         return jsonify({
-#             'id': cand_l,
-#             'name': c_name,
-#             'age': c_age,
-#             'description': c_desc,
-#             'portfolio': c_portfolio
-#         })
-
-#     return redirect('/login')
-    
-# @app.route('/add-portfolio', methods=['POST'])
-# def add_portfolio():
-#     if 'name' in session:
-#         data = request.get_json()
-#         print(data['portfolio'])
-#         ELECTION_INFO['portfolio'].append(data['portfolio'].lower())
-#         return {'status': True}
-#     return redirect('/login')
 
 @app.route('/start-election', methods=['POST'])
 def start_election():
@@ -307,12 +255,26 @@ def start_election():
         return response.json()
     return redirect('/login')
 
+@app.route('/create-election')
+def create_election():
+    ret = db.get_election()
+    if len(ret) == 0:
+        x = uuid4()
+        id = str(x).replace('-', '')
+
+        addr = SHA256.new(id.encode()).hexdigest()
+
+        status = db.create_election((id, addr, None))
+
+        if status == True:
+            return {'status': True, 'message': 'Election Initiated Successfully!!'}
+
+        return {'status': False, 'message': 'Error Initiating Election!!!'}
+    else:
+        return {'status': False, 'message': 'There is an Election with Id : \n' + str(ret[0][1]) + ' already!!'}
+
 @app.route('/get-contract-transactions')
 def get_cont_transactions():
-    # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    # file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
-    # with codecs.open(file_path,encoding='utf8',mode='r') as inp:
-    #     data = inp.read()
 
     addr =  db.get_election()[0][1]
     
@@ -344,13 +306,7 @@ def get_cont_transactions():
             })
 
     # ===========================
-    # c_names = []
-    # for x in ELECTION_INFO['candidates']:
-    #     c_names.append({
-    #         'id': x['id'],
-    #         'name': x['name']
-    #     })
-
+   
     data = {
         'presidents': pres,
         'parliaments': parl,
@@ -360,10 +316,6 @@ def get_cont_transactions():
 
 @app.route('/check-results')
 def check_results():
-    # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    # file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
-    # with codecs.open(file_path,encoding='utf8',mode='r') as inp:
-    #     data = inp.read()
 
     data = {
         'contract_addr': db.get_election()[0][1]
@@ -377,107 +329,38 @@ def check_results():
 
         ret_data = construct_data_for_display()
 
-        # data = {
-        #     'portfolio': ELECTION_INFO['portfolio'],
-        #     'cands': ret_data['result_data']
-        # }
         return render_template('check-results.html', data=ret_data)
     else:
         return render_template('result-not-ready.html')
 
-def construct_data_for_display():
-
-    result = json.loads(db.get_election()[0][3])
-
-    path = Path('database/presidents_img.json')
-    c_imgs = json.loads(path.read_text())
-
-    temp = db.get_presidents()
-    pres = []
-    # ========================================
-    for p in temp:
-        tmp1 = result['candidates']['president']
-        pres.append({
-            'party_id': p[0],
-            'id': p[1],
-            'name': p[2],
-            'portfolio': p[3],
-            'age': p[4],
-            'desc': p[5],
-            'img': c_imgs[p[2].replace(' ', '')] if p[2].replace(' ', '') in c_imgs else None,
-            'vote_count': tmp1[str(p[1])]
-        })
-
-    path = Path('database/parliaments_img.json')
-    c_imgs = json.loads(path.read_text())
-    parl = {}
-    for c in constituencies:
-
-        tmp = db.get_parliaments_by_constituency(c)
-        tmp1 = result['candidates']['parliament'][c]
-
-        parl[c] = []
-        for i1 in tmp:
-            for i2 in tmp1:
-                if str(i1[1]) == str(i2):
-                    parl[c].append({
-                        'id': i1[1],
-                        'name': i1[2],
-                        'age': i1[3],
-                        'constituency': i1[4],
-                        'description': i1[5],
-                        'image': c_imgs[i1[2].replace(' ', '')] if i1[2].replace(' ', '') in c_imgs else None,
-                        'party_name': db.get_party_name(i1[0]),
-                        'vote_count': tmp1[i2]
-                    })
-                    break
-
-    # ========================================
-    # for x in ELECTION_INFO['candidates']:
-    #     c_names.append({
-    #         'id': x['id'],
-    #         'name': x['name']
-    #     })
-        
-    # tmp = {}
-    # cands = ELECTION_INFO['result']['candidates']
-    # for i in cands:
-    #     tmp[i] = []
-    #     for j in cands[i]:
-    #         for k in c_names:
-    #             if int(j) == int(k['id']):
-    #                 tmp[i].append({
-    #                     'id': k['id'],
-    #                     'vote_count': cands[i][j],
-    #                     'name' : k['name']
-    #                 })
-
-    return {'presidents': pres, 'parliaments': parl}
-        
 @app.route('/get-result')
 def get_result():
     
-    ret_data = construct_data_for_display()
-    ret_data['total_votes'] = json.loads(db.get_election()[0][3])['total_votes']
+    try:
+        ret_data = construct_data_for_display()
+        ret_data['total_votes'] = json.loads(db.get_election()[0][2])['total_votes']
+        ret_data['status'] = True
+        return ret_data
+    except:
+        return {'status': False}
 
-    return ret_data
-    # for x in ELECTION_INFO['candidates']:
-    #     tmp.append({
-    #         'id': x['id'],
-    #         'name': x['name']
-    #     })
-        
-    # return jsonify({
-    #     'cand_names': tmp,
-    #     'result': ELECTION_INFO['result'],
-    #     'portfolio': ELECTION_INFO['portfolio']
-    # })
+@app.route('/logout')
+def logout():
+    session.pop('name', None)
+
+    return redirect('/')
+
+
+
+
+# ====================================
+# APIs used by voters
 
 @app.route('/get-result-for-user')
 def get_result_for_user():
     cons = request.args.get('constituency')
 
-    result = db.get_election()[0][3]
+    result = db.get_election()[0][2]
     if result != None or result != "":
         data = {}
 
@@ -488,19 +371,13 @@ def get_result_for_user():
         ret_data = {
             'presidents': pres,
             'parliaments': parl,
-            'total_votes': json.loads(db.get_election()[0][3])['total_votes']
+            'total_votes': json.loads(db.get_election()[0][2])['total_votes']
         }
 
         return jsonify({'status': True, 'data' : ret_data})
 
     else:
         return jsonify({'status': False, 'message': 'Election Result Not Ready Yet!!'})
-
-@app.route('/logout')
-def logout():
-    session.pop('name', None)
-
-    return redirect('/')
 
 @app.route('/user-transaction', methods=['POST'])
 def user_vote():
@@ -546,11 +423,6 @@ def user_get_info():
             db.insert_user_vote(r_data[0])
             user = db.get_data('user', (r_data[0],))
 
-            # BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-            # file_path = os.path.join(BASE_DIR, "contract/vote_contract.py")
-            # with codecs.open(file_path,encoding='utf8',mode='r') as inp:
-            #     data = inp.read()
-            
             candidates = []
 
             path = Path('database/presidents_img.json')
@@ -588,8 +460,8 @@ def user_get_info():
             election_info['candidates'] = candidates
             election_info['portfolio'] = ['president', 'parliament']
 
-            temp = db.get_election()[0][3]
-            election_info['result'] = json.loads(temp) if temp != None else None
+            # temp = db.get_election()[0][2]
+            # election_info['result'] = json.loads(temp) if temp != None or temp != "" else None
 
             return {
                 'status': True,
@@ -604,6 +476,11 @@ def user_get_info():
             return {'status': True, 'message': 'Results will be available soon'}
     else:
         return {'status': False, 'message': 'Please verify your credentials and try again'}
+
+
+
+# =============================================
+# APIs used by Board Members
 
 @app.route('/submit-candidates', methods=["POST"])
 def party_data():
@@ -642,35 +519,11 @@ def party_data():
     addr = db.get_election()[0][1]
     return jsonify({'status': True, 'election_address': addr})
 
-# def get_election_addr(arg):
-#     path = Path('database/data.json')
-#     data = json.loads(path.read_text())
-#     if 'election_addr' in data:
-#         return data['election_addr']
-#     else:
-#         addr = SHA256.new(arg).hexdigest()
-#         data['election_addr'] = addr
-#         path.write_text(json.dumps(data))
 
-#         return addr
 
-# def get_key():
-#     path = Path('database/data.json')
-#     data = json.loads(path.read_text())
-#     if 'keys' in data:
-#         return data['keys']
-#     else:
-#         key = RSA.generate(1024)
-#         priv_key = key.exportKey()
-#         pub_key = key.publickey().exportKey()
-#         keys = {
-#             'private_key': priv_key.decode(),
-#             'public_key': pub_key.decode()
-#         }
-#         data['keys'] = keys
-#         path.write_text(json.dumps(data))
 
-#         return keys
+# ==========================================================
+# UTILITY FUNCTIONS
 
 def sign_ballot(arg, hasId=False):
     path = Path('database/data.json')
@@ -728,6 +581,74 @@ def format_key_for_api(key, type='pub'):
             return binascii.hexlify(key.encode()).decode().upper()
     else:
         return key
+
+def construct_data_for_display():
+    temp = db.get_election()
+    
+    if temp[0][2] != None:
+        result = json.loads(temp[0][2])
+    else:
+        result = None
+
+    path = Path('database/presidents_img.json')
+    c_imgs = json.loads(path.read_text())
+
+    temp = db.get_presidents()
+    pres = []
+    # ========================================
+    for p in temp:
+        tmp1 = result['candidates']['president']
+        pres.append({
+            'party_id': p[0],
+            'id': p[1],
+            'name': p[2],
+            'portfolio': p[3],
+            'age': p[4],
+            'desc': p[5],
+            'img': c_imgs[p[2].replace(' ', '')] if p[2].replace(' ', '') in c_imgs else None,
+            'vote_count': tmp1[str(p[1])]
+        })
+
+    path = Path('database/parliaments_img.json')
+    c_imgs = json.loads(path.read_text())
+    parl = {}
+    for c in constituencies:
+
+        tmp = db.get_parliaments_by_constituency(c)
+        tmp1 = result['candidates']['parliament'][c]
+
+        parl[c] = []
+        for i1 in tmp:
+            for i2 in tmp1:
+                if str(i1[1]) == str(i2):
+                    parl[c].append({
+                        'id': i1[1],
+                        'name': i1[2],
+                        'age': i1[3],
+                        'constituency': i1[4],
+                        'description': i1[5],
+                        'image': c_imgs[i1[2].replace(' ', '')] if i1[2].replace(' ', '') in c_imgs else None,
+                        'party_name': db.get_party_name(i1[0]),
+                        'vote_count': tmp1[i2]
+                    })
+                    break
+
+    # ========================================
+    
+
+    return {'presidents': pres, 'parliaments': parl}
+
+def generate_key():
+        key = RSA.generate(1024)
+        priv_key = key.exportKey()
+        pub_key = key.publickey().exportKey()
+        
+        keys = {
+            'private_key': priv_key.decode(),
+            'public_key': pub_key.decode()
+        }
+
+        return keys
 
 app.secret_key = 'mysecret'
 

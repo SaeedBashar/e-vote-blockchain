@@ -31,6 +31,7 @@ from database import database as db
 # =====================================================
 
 election_addr = None
+total_votes = None
 
 app = Flask(__name__)
 
@@ -40,7 +41,7 @@ def cxt_proc():
         return str(el).upper()
     
     def percent(el):  
-        return str(round((el/int(session['total_votes'])) * int(100),1))
+        return str(round((el/int(total_votes)) * int(100),1))
 
     def toStr(el):
         return str(el)
@@ -267,7 +268,7 @@ def approve_election():
     board = db.get_user((session['u_name'], session['password']))
     transaction = {
             'from_addr': format_key_for_api(board[0][5]),
-            'to_addr': 'SC' + session['election_addr'],
+            'to_addr': 'SC' + election_address,
             'value': 0,
             'gas': 0,
             'args': []
@@ -297,23 +298,37 @@ def approve_election():
 def elecion_status():
     # addr = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
     # addr = session['election_addr']
-    data = {
-        'contract_addr': election_address
-    }
+    try:
+        data = {
+            'contract_addr': election_address
+        }
+        
+        response = requests.post('http://127.0.0.1:4000/get-contract-result', json=data)
+        response = response.json()
+        print(response)
+
+        if response['status'] == False:
+            return render_template('error.html', data=response['message'])
+
+        board = response['contract_result']['board']
+        return render_template('election-status.html', data=board)
+
+    except:
+        return render_template('error.html', data="An Error Occured")
+        
     
-    response = requests.post('http://127.0.0.1:4000/get-contract-result', json=data)
-    response = response.json()
-    print(response)
-    board = response['contract_result']['board']
-    return render_template('election-status.html', data=board)
-    
-@app.route('/check-result')
+@app.route('/get-result')
 def check_result():
     
     res = requests.get('http://127.0.0.1:7000/get-result').json()
-    session['total_votes'] = res['total_votes']
+    if res['status'] == True:
+        global total_votes
+        total_votes = res['total_votes']
 
-    return render_template('check-results.html', data=res)
+        return render_template('get-results.html', data=res)
+    else:
+        return render_template('result-not-ready.html', data=res)
+
 
 
 @app.route('/get-result')

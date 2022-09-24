@@ -37,12 +37,7 @@ def contract(action='init', args=[], state={}):
                     {
                         'party_id': 545,
                         'party_name': 'party1',
-                        'public_key': """-----BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ
-gaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ
-0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB
-aeO8p+qhe1sp4IU9dwIDAQAB
------END PUBLIC KEY-----""",
+                        'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ\ngaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ\n0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB\naeO8p+qhe1sp4IU9dwIDAQAB\n-----END PUBLIC KEY-----""",
                         'approved': False
                     }
                 ]

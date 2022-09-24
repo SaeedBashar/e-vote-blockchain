@@ -37,20 +37,20 @@ def contract(action='init', args=[], state={}):
                     {
                         'party_id': 545,
                         'party_name': 'party1',
-                        'public_key': """-----BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ
-gaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ
-0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB
-aeO8p+qhe1sp4IU9dwIDAQAB
------END PUBLIC KEY-----""",
+                        'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ\ngaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ\n0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB\naeO8p+qhe1sp4IU9dwIDAQAB\n-----END PUBLIC KEY-----""",
                         'approved': False
                     }
                 ]
 
     def election_vote():
 
-        res = verify_transaction()
+        res = verify_transaction(verification_pub_key, args[1]['ballot_info']['sign_data'], args[1]['ballot_info']['signature'])
         if res['status'] == True:
+            
+            for b in state['storage']['board']:
+                if b['approved'] == False:
+                    return
+
             nonlocal election_in_progress
             if election_in_progress:
                 for k in list(args[1]['candidates'].keys()):
@@ -66,20 +66,29 @@ aeO8p+qhe1sp4IU9dwIDAQAB
                 state['storage']['total_votes'] += 1
     
     def board_consent():
-        pass
+        for b in state['storage']['board']:
+            if args[1]['public_key'] == b['public_key']:
+                res = verify_transaction(
+                    args[1]['public_key'], 
+                    args[1]['sign_data'], 
+                    args[1]['signature']
+                )
 
-    def verify_transaction():
-        data = args[1]['ballot_info']['sign_data']
+                if res['status'] == True:
+                    b['approved'] = True
+                break
+
+    def verify_transaction(pk, data, sig):
         tmp = ""
         for x in data:
             tmp += x
         
         h = SHA256.new(tmp.encode())
         try:
-            pub_key = RSA.importKey(verification_pub_key.encode())
+            pub_key = RSA.importKey(pk.encode())
             verifier = PKCS1_v1_5.new(pub_key)
 
-            verifier.verify(h, args[1]['ballot_info']['signature'].encode())
+            verifier.verify(h, sig.encode())
             return {
                 'status': True,
                 'msg': 'Verification Success'
@@ -101,6 +110,8 @@ aeO8p+qhe1sp4IU9dwIDAQAB
         election_main()
     elif action == 'vote_cast':
         election_vote()
+    elif action == 'consent':
+        board_consent()
     else:
         pass
 

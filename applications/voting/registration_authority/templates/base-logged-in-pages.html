@@ -26,8 +26,19 @@
         </div>
         <div class="card-body">
             <h2 class="card-title">Election has began</h2>
-            <p class="card-text">Come later to check the results</p>
-            <button onclick="exitModal()" class="btn btn-danger">Exit</button>
+            <p class="card-text">Come later and check the results</p>
+            <button onclick="exitModal('id03')" class="btn btn-danger">Exit</button>
+        </div>
+      </div>
+    </div>
+    <div id="id04" class="cus-modal animate" style="margin-left: 300px;width:80%">
+      <div class="card-info alert alert-info">
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <h2 id='card-title-initiate' style="overflow-wrap: break-word" class="card-title"></h2>
+            <button onclick="exitModal('id04')" class="btn btn-danger">Exit</button>
         </div>
       </div>
     </div>
@@ -40,8 +51,11 @@
         </a>
 
         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow" style="width: 240px">
+          <div>
+            <button class="btn btn-info text-white" onclick="createElection()">Initiate Election</button>
+          </div>
           <div class="cus-dropdown">
-            <button class="btn btn-info text-white">Start New Election</button>
+            <button class="btn btn-info text-white">Start Election</button>
             <div class="cus-dropdown-content">
               <ul>
                 <li class="dropdown-header">
@@ -137,8 +151,21 @@
           }
         })
       }
-      function exitModal(){
-        document.getElementById('id03').style.display='none'
+
+      function createElection(){
+        fetch('/create-election')
+        .then(x=>x.json())
+        .then(x=>{
+          el = document.getElementById('id04')
+          el.style.display='block'
+          
+          y = document.getElementById('card-title-initiate')
+          y.innerHTML = x.message
+            
+        })
+      }
+      function exitModal(arg){
+        document.getElementById(arg).style.display='none'
       }
     </script>
   </header>

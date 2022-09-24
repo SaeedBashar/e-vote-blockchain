@@ -145,16 +145,27 @@ def get_party_name(arg):
         cursor = conn.execute(query, (arg,))
         return cursor.fetchall()[0][0]
 
+def create_election(arg):
+    try:
+        query = "Insert into election values(?, ?, ?)"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(query, arg)
+            conn.commit()
+
+            return True
+    except:
+        return False
+
 def get_election(arg=''):
-    query = "SELECT * FROM Election where id = ?"
+    query = "SELECT * FROM Election"
     with sqlite3.connect(db_path) as conn:
-        cursor = conn.execute(query, (arg,))
+        cursor = conn.execute(query)
         return cursor.fetchall()
 
 def update_election(res, arg=''):
-    query = "UPDATE Election set result = ? where id = ?"
+    query = "UPDATE Election set result = ?"
     with sqlite3.connect(db_path) as conn:
-        conn.execute(query, (json.dumps(res), arg))
+        conn.execute(query, (json.dumps(res),))
         conn.commit()
 
     return True

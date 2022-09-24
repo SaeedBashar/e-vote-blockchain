@@ -21,19 +21,31 @@
                         {{ trans['from_addr']}}
                     </div>
                     <div class="card-body">
-                        <h2 class="card-title" style="color: #055160"> PRESIDENT :
+                        <h2 class="card-title" style="color: #055160"> 
                             {% for ps in data['presidents'] %}
-                                {% if ps['id'] == trans['args'][1]['candidates']['president'] %}
-                                    {{ps['name']}}
+                                {% if 'candidates' in  trans['args'][1]%}
+                                    {% if ps['id'] == trans['args'][1]['candidates']['president'] %}
+                                    PRESIDENT :
+                                        {{ps['name']}}
+                                    {% endif %}
+                                {% endif %}
+                                {% if 'candidates' not in  trans['args'][1]%}
+                                CONSENT <br/><br/>
+                                Approved : True
                                 {% endif %}
                             {% endfor %}
                         </h2>
-                        <p class="card-text"> PARLIAMENT :
+                        <p class="card-text">
+                            {% if 'ballot_info' in trans['args'][1] %}
+                            PARLIAMENT :
                             {% for pr in data['parliaments'][trans['args'][1]['ballot_info']['constituency']] %}
-                                {% if pr['id'] == trans['args'][1]['candidates']['parliament'] %}
-                                    {{pr['name']}}
+                                {% if 'candidates' in  trans['args'][1]%}
+                                    {% if pr['id'] == trans['args'][1]['candidates']['parliament'] %}
+                                        {{pr['name']}}
+                                    {% endif %}
                                 {% endif %}
                             {% endfor %}
+                            {% endif %}
                         </p>
                     </div>
                 </div>

@@ -48,7 +48,7 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="/check-result">
+        <a class="nav-link" href="/get-result">
           <i class="bi bi-journal-text"></i><span>Check Result</span> </i>
         </a>
       </li>
@@ -58,8 +58,34 @@
         </a>
       </li>
     </ul>
+    <div id="id01" class="cus-modal animate" style="margin-left: 300px;width:80%">
+      <div class="card-info alert alert-info">
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <h2 class="card-title">Election has began</h2>
+            <p class="card-text">Come later and check the results</p>
+            <button onclick="exitModal('id01')" class="btn btn-danger">Exit</button>
+        </div>
+      </div>
+    </div>
   </aside>
+  <script>
+    def election_status(){
+      fetch('/election-status')
+      .then(x=>x.json())
+      .then(x=>{
+        if(x.status == false){
+          document.getElementById('id01').style.display = 'block'
+        }
+      })
+    }
 
+    function exitModal(arg){
+      document.getElementById(arg).style.display='none'
+    }
+  </script>
   {% block subbody %}
   {% endblock  %}
 {% endblock %}
