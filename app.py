@@ -4,7 +4,6 @@ from math import trunc
 import os
 from flask import Flask, jsonify, request, render_template, redirect, session, escape, g
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
 
 import socket
 import time as tm

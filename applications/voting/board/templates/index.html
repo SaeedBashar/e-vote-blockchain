@@ -21,6 +21,7 @@
         </ol>
       </nav>
     </div>
+    
     <div id="carouselExampleCaptions" class="carousel slide carousel-fade" data-bs-touch="false" data-bs-interval="false">
       <div class="carousel-inner">
         <div class="carousel-item active">
@@ -194,6 +195,7 @@
           party_data.presidential = data
           console.log(party_data)
           alert('Candidate added Successfully!!')
+          //getEl('id03').display = 'block'
           getEl('name').value = "";
           getEl('age').value = "";
           getEl('description').value = "";
@@ -233,7 +235,7 @@
           console.log(party_data)
           
           alert("Candidate Added Successfully!!");
-
+          //getEl('id03').display = 'block'
           getEl('p_name').value = "";
           getEl('p_age').value = "";
           getEl('p_description').value = "";
@@ -292,7 +294,6 @@
           })
           .catch(e=>console.log(e))
       }
-
     </script>
 
   </main>
