@@ -23,11 +23,19 @@ def contract(action='init', args=[], state={}):
                         1 : 0
                     },
                     'parliament': {
-                        'cons1': {
+                        'ejisu': {
                             0 : 0,
                             1 : 0
                         },
-                        'cons2': {
+                        'asokwa': {
+                            0 : 0,
+                            1 : 0
+                        },
+                        'bekwai': {
+                            0 : 0,
+                            1 : 0
+                        },
+                        'juaben': {
                             0 : 0,
                             1 : 0
                         }
@@ -35,9 +43,16 @@ def contract(action='init', args=[], state={}):
                 }
                 state['storage']['board'] = [
                     {
-                        'party_id': 545,
-                        'party_name': 'party1',
+                        'party_id': '83eba25b98ef4f13b127e79a7e49c6b7',
+                        'party_name': 'National Youth Party',
                         'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCofnA63FjJ2bOznmRAyRYFPjzZ\ngaoJ9Gx8Jg4jBScucEMO+LvsckrDsvwpgKMnmuxhIyIwfmgX4y4Tnc+Py+TkgkpZ\n0qMXdzhnqTttB44Ku+pxNll0/fZrR/DVJtZwuc9jrPQyzGdRE59x24Ux8EhNFMNB\naeO8p+qhe1sp4IU9dwIDAQAB\n-----END PUBLIC KEY-----""",
+                        'approved': False
+                    }
+                    ,
+                    {
+                        'party_id': '12f35da8cd444cba91e050745ee069f2',
+                        'party_name': 'People Development Party',
+                        'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8eJT73n2Hmnmx2hBy2Jtly6yi\nrQiefLvjtwwEY9QZ36qzaNolI/7DlrrLluZ+bS1vGdGk5hCiZHhE1zhbbGQO+5Xl\n6OfVQI08j+EGUm7Q/pgZiEpOCqUihcRTRjSYSuX1RuHSCF0EzzpoI2Nr5PMe1gSK\nU+CbglD8P5nRRkJxmwIDAQAB\n-----END PUBLIC KEY-----""",
                         'approved': False
                     }
                 ]

@@ -419,5 +419,5 @@ def page_not_found(error):
 app.secret_key = 'mysecret'
 
 if __name__ == '__main__':
-    app.run(host=addr, port=(int(port) - 1000), debug = True, threaded = True)
+    app.run(host=addr, port=(int(port) - 1000), threaded = True)
 

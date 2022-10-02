@@ -1,0 +1,8 @@
+{
+    "reg_auth_ip": "127.0.0.1",
+    "reg_auth_port": 7000,
+    "reg_public_key": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCjLQPfEHSwdGZxDM9LnNq4wJs9\n24E/NyfhWO1dus6giKnPIy71J7VqNoIdjcVcM8NdptO6DPBOK2JJBApEW7Pd5TSp\n6xZJDZZ4H3MkXK8zyoOvQL1DajKYlprx1+AvlQRtEP9F5qOhg1NDGnLqLAVeDReH\nUV4y4kraVey4vt3xOQIDAQAB\n-----END PUBLIC KEY-----",
+    "miner_ip": "127.0.0.1",
+    "miner_port": 4000,
+    "party_id": "83eba25b98ef4f13b127e79a7e49c6b7"
+}

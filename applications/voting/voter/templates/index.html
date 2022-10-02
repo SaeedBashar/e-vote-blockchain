@@ -21,16 +21,18 @@
         <input type="text" id='newP' value="" class="form-control">
         <button onclick="exitModal()">Exit</button>
     </div>-->
-    <div id="id02" class="cus-modal alert-danger ">
-        <div class="imgcontainer">
-            <button style="color: red;border:none" onclick="exitModal()" class="close" title="Close Modal">&times;</span>
-        </div>
-        <div class="card-header" style="font-size: 25px">
-            Information
-        </div>
-        <div class="card-body">
-            <h2 class="card-title" id="info"></h2>
-            <button onclick="exitModal()" class="btn btn-danger">Exit</button>
+    <div>
+        <div id="id02" class="cus-modal alert-danger " >
+            <div class="imgcontainer">
+                <button style="color: red;border:none" onclick="exitModal()" class="close" title="Close Modal">&times;</span>
+            </div>
+            <div class="card-header" style="font-size: 25px">
+                Information
+            </div>
+            <div class="card-body">
+                <h2 class="card-title" id="info"></h2>
+                <button onclick="exitModal()" class="btn btn-danger">Exit</button>
+            </div>
         </div>
     </div>
     {% for p in data['info']['portfolio']%}
@@ -87,6 +89,7 @@
             const nodeList = document.querySelectorAll("button[candp=" + el.getAttribute('candp') + "]");
             for (let i = 0; i < nodeList.length; i++) {
                 nodeList[i].disabled = true;
+                nodeList[i].style.background = '#4F4F4F'
             }
             console.log(votedList)
         }

@@ -71,7 +71,7 @@
                                                 text-align: right;
                                                 display: block;
                                                 width: 100%;">
-                                                    {{ percent(p1['vote_count']) + "%" }}
+                                                    {{ p_percent(p1['vote_count'], data['parl_count'][c]) + "%" }}
                                                 </span>
                                             </div>
                                         </div>
@@ -91,73 +91,73 @@
         data = null
     
         document.addEventListener("DOMContentLoaded", () => {
-
-        var tmp = {};
-        fetch('get-result')
-        .then(x=>x.json())
-        .then(x=>{
-            data = x
-            console.log(data)
-
             
-            pres = []
-            for(p of data.presidents){
-                pres.push({
-                    value : p.vote_count,
-                    name : p.name
-                })
-            }
-            construct_chart('president', pres)
+            var tmp = {};
 
-            parl = {}
-            for(c in data.parliaments){
-                parl[c] = []
-                for(p of data.parliaments[c]){
-                    parl[c].push({
+            fetch('/get-results')
+            .then(x=>x.json())
+            .then(x=>{
+                data = x
+                console.log(data)
+
+                pres = []
+                for(p of data.presidents){
+                    pres.push({
                         value : p.vote_count,
                         name : p.name
                     })
                 }
-                construct_chart(c, parl[c])
-            }
+                construct_chart('president', pres)
 
-            function construct_chart(tgt, arr){
-                console.log(arr)
-                echarts.init(document.querySelector("#" + tgt + "-chart")).setOption({
-                    tooltip: {
-                    trigger: 'item'
-                    },
-                    legend: {
-                    top: '5%',
-                    left: 'center'
-                    },
-                    series: [{
-                    name: tgt,
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    label: {
-                        show: false,
-                        position: 'center'
-                    },
-                    emphasis: {
+                parl = {}
+                for(c in data.parliaments){
+                    parl[c] = []
+                    for(p of data.parliaments[c]){
+                        parl[c].push({
+                            value : p.vote_count,
+                            name : p.name
+                        })
+                    }
+                    construct_chart(c, parl[c])
+                }
+
+                function construct_chart(tgt, arr){
+                    console.log(arr)
+                    echarts.init(document.querySelector("#" + tgt + "-chart")).setOption({
+                        tooltip: {
+                        trigger: 'item'
+                        },
+                        legend: {
+                        top: '5%',
+                        left: 'center'
+                        },
+                        series: [{
+                        name: tgt,
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
                         label: {
-                        show: true,
-                        fontSize: '18',
-                        fontWeight: 'bold'
-                        }
-                    },
-                    labelLine: {
-                        show: false
-                    },
-                    data: arr
-                    }]
-                });
-            }
-        })
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: arr
+                        }]
+                    });
+                }
+            })
 
         
-      });
+        });
 
     </script>
 

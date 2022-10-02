@@ -1,6 +1,7 @@
 import binascii
 from pathlib import Path
 from unittest import result
+from uuid import uuid4
 from flask import Flask, session
 from flask import render_template, redirect, request, jsonify, g
 from math import *
@@ -20,18 +21,22 @@ from Crypto.Signature import PKCS1_v1_5
 from database import database as db
 
 
-# Get and set some initial values for Election Authority
+# Get configuartion values for board member
 # =====================================================
-# path = Path('database/election_data.json')
-# data = json.loads(path.read_text())
+path = Path('database/board_config.json')
+global_data = json.loads(path.read_text())
 
-# ELECTION_INFO = data['election_info']
-# # election_authorities = set(data['election_authorities'])
-# miner_nodes = data['miner_nodes']
+PARTY_ID = global_data['party_id']
+PARTY_NAME = None
+
+RA_ip = global_data['reg_auth_ip']
+RA_port = global_data['reg_auth_port']
+miner_ip = global_data['miner_ip']
+miner_port = global_data['miner_port']
 # =====================================================
 
-election_addr = None
-total_votes = None
+ELECTION_ADDRESS = None
+TOTAL_VOTES = None
 
 app = Flask(__name__)
 
@@ -40,13 +45,22 @@ def cxt_proc():
     def toUpper(el):
         return str(el).upper()
     
-    def percent(el):  
-        return str(round((el/int(total_votes)) * int(100),1))
+    def percent(el): 
+        if TOTAL_VOTES == 0:
+                total = 1
+        else:
+            total = TOTAL_VOTES
+        return str(round((el/int(total)) * int(100),1))
+    
+    def parl_percent(el, total):  
+        if total == 0:
+            total = 1
+        return str(round((el/int(total)) * int(100),1))
 
     def toStr(el):
         return str(el)
     
-    return {'upper': toUpper, 'percent': percent, 'toStr': toStr}
+    return {'upper': toUpper, 'percent': percent, 'toStr': toStr, 'p_percent': parl_percent}
 
 @app.route('/')
 def index():
@@ -227,6 +241,14 @@ def submit_data():
     # ===========================
     data = request.get_json()
 
+    # x = uuid4()
+    # id = str(x).replace('-', '')
+    data['party_id'] = PARTY_ID
+
+    global PARTY_NAME
+    PARTY_NAME = data['party_name']
+    # db.add_party_info((data['party_id'], data['party_name']))
+
     president = data['presidential']
 
     c_name = president["name"]
@@ -254,12 +276,13 @@ def submit_data():
     path.write_text(json.dumps(imgs))
 
     # ===========================
+   
 
     data['board_address'] = db.get_user((session['u_name'], session['password']))[0][5]
-    res = requests.post('http://127.0.0.1:7000/submit-candidates', json=data).json()
+    res = requests.post(f"http://{RA_ip}:{RA_port}/submit-candidates", json=data).json()
 
-    global election_address
-    election_address = res['election_address']
+    global ELECTION_ADDRESS
+    ELECTION_ADDRESS = res['election_address']
     
     return jsonify({'status': True})     
 
@@ -268,7 +291,7 @@ def approve_election():
     board = db.get_user((session['u_name'], session['password']))
     transaction = {
             'from_addr': format_key_for_api(board[0][5]),
-            'to_addr': 'SC' + election_address,
+            'to_addr': 'SC' + ELECTION_ADDRESS,
             'value': 0,
             'gas': 0,
             'args': []
@@ -289,7 +312,7 @@ def approve_election():
                                     'sign_data': transaction['args'][0]['sign_data']
                             })
 
-    response = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
+    response = requests.post(f'http://{miner_ip}:{miner_port}/transactions', json=transaction)
 
     return {'status': True}
     
@@ -300,10 +323,10 @@ def elecion_status():
     # addr = session['election_addr']
     try:
         data = {
-            'contract_addr': election_address
+            'contract_addr': ELECTION_ADDRESS
         }
         
-        response = requests.post('http://127.0.0.1:4000/get-contract-result', json=data)
+        response = requests.post(f'http://{miner_ip}:{miner_port}/get-contract-result', json=data)
         response = response.json()
         print(response)
 
@@ -320,10 +343,10 @@ def elecion_status():
 @app.route('/get-result')
 def check_result():
     
-    res = requests.get('http://127.0.0.1:7000/get-result').json()
+    res = requests.get(f'http://{RA_ip}:{RA_port}/get-result').json()
     if res['status'] == True:
-        global total_votes
-        total_votes = res['total_votes']
+        global TOTAL_VOTES
+        TOTAL_VOTES = res['total_votes']
 
         return render_template('get-results.html', data=res)
     else:
@@ -331,10 +354,10 @@ def check_result():
 
 
 
-@app.route('/get-result')
+@app.route('/get-results')
 def get_result():
     
-    res = requests.get('http://127.0.0.1:7000/get-result').json()
+    res = requests.get(f'http://{RA_ip}:{RA_port}/get-result').json()
     
     return res
 
@@ -370,4 +393,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='127.0.0.1', port=port, debug=True, threaded = True)
+
+    app.run(host='127.0.0.1', port=port, threaded = True)

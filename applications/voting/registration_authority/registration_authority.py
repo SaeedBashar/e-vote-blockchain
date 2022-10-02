@@ -23,13 +23,11 @@ from database import database as db
 
 # Get and set some initial values for Election Authority
 # =====================================================
-path = Path('database/election_data.json')
+path = Path('database/election_config.json')
 data = json.loads(path.read_text())
 
-ELECTION_INFO = data['election_info']
-# election_authorities = set(data['election_authorities'])
-miner_nodes = ["127.0.0.1:4000"]
-constituencies = ['cons1', 'cons2']
+MINER_NODES = data['miner_nodes']
+constituencies = ['ejisu', 'asokwa', 'bekwai', 'juaben']
 # =====================================================
 
 
@@ -42,7 +40,17 @@ def cxt_proc():
     
     def percent(el):  
         result = json.loads(db.get_election()[0][2])
-        return str(round((el/int(result['total_votes'])) * int(100),1))
+        if result['total_votes'] == 0:
+            total = 1
+        else:
+            total = result['total_votes']
+            
+        return str(round((el/int(total)) * int(100),1))
+
+    def parl_percent(el, total):
+        if total == 0:
+            total = 1 
+        return str(round((el/int(total)) * int(100),1))
 
     def toStr(el):
         return str(el)
@@ -50,7 +58,7 @@ def cxt_proc():
     def length(el):
         return len(el)
     
-    return {'upper': toUpper, 'percent': percent, 'toStr': toStr, 'len': length}
+    return {'upper': toUpper, 'percent': percent, 'toStr': toStr, 'len': length, 'p_percent': parl_percent}
 
 
 # ===================================
@@ -250,7 +258,7 @@ def start_election():
         
         transaction['args'].append(contract_params)
 
-        response = requests.post('http://127.0.0.1:4000/transactions', json=transaction)
+        response = requests.post(F'http://{MINER_NODES[0]}/transactions', json=transaction)
         
         return response.json()
     return redirect('/login')
@@ -278,7 +286,7 @@ def get_cont_transactions():
 
     addr =  db.get_election()[0][1]
     
-    response = requests.get('http://127.0.0.1:4000/api/contract-transactions?address=%s' %addr)
+    response = requests.get(f'http://{MINER_NODES[0]}/api/contract-transactions?address={addr}')
     response = response.json()
     
     # ===========================
@@ -321,7 +329,7 @@ def check_results():
         'contract_addr': db.get_election()[0][1]
     }
     
-    response = requests.post('http://127.0.0.1:4000/get-contract-result', json=data)
+    response = requests.post(f'http://{MINER_NODES[0]}/get-contract-result', json=data)
     response = response.json()
     if response['status'] == True:
 
@@ -371,6 +379,7 @@ def get_result_for_user():
         ret_data = {
             'presidents': pres,
             'parliaments': parl,
+            'parl_count': data['parl_count'][cons],
             'total_votes': json.loads(db.get_election()[0][2])['total_votes']
         }
 
@@ -390,7 +399,10 @@ def user_vote():
 @app.route('/user-login', methods=['POST'])
 def auth_login():
     x = request.get_json()
-    r_data = db.get_user((x['username'].lower(), x['password']))
+
+    uname = x['username'].lower()
+    pword = SHA256.new(x['password'].encode()).hexdigest()
+    r_data = db.get_user((uname, pword))
     
     try:
         if  float(dt.timestamp(dt.now())) > start_time: # user trying to vote ahead of time
@@ -398,7 +410,7 @@ def auth_login():
                 if r_data[0][4] == 0: # Check if he/she has voted already
                     if r_data[0][2] == None: # Check if he/she has an id
                         userId = Crypto.Random.new().read(64).hex()
-                        db.insert_voter_id(userId, (x['username'], x['password']))
+                        db.insert_voter_id(userId, (uname, pword))
                     else:
                         userId = r_data[0][2] 
                     db.verify_user(userId)
@@ -465,8 +477,8 @@ def user_get_info():
 
             return {
                 'status': True,
-                'signature': sign_ballot((user[0], user[1]), hasId),
-                'miner_nodes': list(miner_nodes),
+                'signature': sign_ballot((user[0], user[1]), hasId, x['sign_id']),
+                'miner_nodes': list(MINER_NODES),
                 'election_info': election_info,
                 'election_addr': db.get_election()[0][1],
                 'user_id': user[2],
@@ -486,38 +498,48 @@ def user_get_info():
 def party_data():
     data = request.get_json()
 
-    president = data['presidential']
-
-    c_name = president["name"]
-    c_portfolio = president["portfolio"]
-    c_age = president["age"]
-    c_desc = president["description"]
-    c_img = president['imgByte']
-
-    if c_img != None:
-        path = Path('database/presidents_img.json')
-        imgs = json.loads(path.read_text())
-        imgs[c_name.replace(' ', '')] = c_img
-        path.write_text(json.dumps(imgs))
-
-    ret = db.get_presidents()
-    db.add_candidate('pres', (data['party_id'], len(ret), c_name, c_portfolio, c_age, c_desc))
-    
-    parliamentary = data['parliamentary']
-    path = Path('database/parliaments_img.json')
-    imgs = json.loads(path.read_text())
-    for p in parliamentary:
-        ret = db.get_parliaments_by_constituency(p['constituency'])
-        db.add_candidate('parl', (data['party_id'], len(ret), p['name'], p['age'], p['constituency'], p['description']))
-
-        if p['imgByte'] != None:
-            imgs[p['name'].replace(' ', '')] = p['imgByte']
-    path.write_text(json.dumps(imgs))
-
-    db.add_party((data['party_id'], data['party_name'], data['board_address']))
+    ret_data = db.get_parties()
+    is_submitted = False
+    for x in ret_data:
+        if x[0] == data['party_id']:
+            is_submitted = True
 
     addr = db.get_election()[0][1]
-    return jsonify({'status': True, 'election_address': addr})
+    if not is_submitted:
+        president = data['presidential']
+
+        c_name = president["name"]
+        c_portfolio = president["portfolio"]
+        c_age = president["age"]
+        c_desc = president["description"]
+        c_img = president['imgByte']
+
+        if c_img != None:
+            path = Path('database/presidents_img.json')
+            imgs = json.loads(path.read_text())
+            imgs[c_name.replace(' ', '')] = c_img
+            path.write_text(json.dumps(imgs))
+
+        ret = db.get_presidents()
+        db.add_candidate('pres', (data['party_id'], len(ret), c_name, c_portfolio, c_age, c_desc))
+        
+        parliamentary = data['parliamentary']
+        path = Path('database/parliaments_img.json')
+        imgs = json.loads(path.read_text())
+        for p in parliamentary:
+            ret = db.get_parliaments_by_constituency(p['constituency'])
+            db.add_candidate('parl', (data['party_id'], len(ret), p['name'], p['age'], p['constituency'], p['description']))
+
+            if p['imgByte'] != None:
+                imgs[p['name'].replace(' ', '')] = p['imgByte']
+        path.write_text(json.dumps(imgs))
+
+        db.add_party((data['party_id'], data['party_name'], data['board_address']))
+
+        
+        return jsonify({'status': True, 'election_address': addr})
+    else:
+        return jsonify({'status': True, 'election_address': addr})
 
 
 
@@ -525,7 +547,7 @@ def party_data():
 # ==========================================================
 # UTILITY FUNCTIONS
 
-def sign_ballot(arg, hasId=False):
+def sign_ballot(arg, hasId=False, sign_data=''):
     path = Path('database/data.json')
     data = json.loads(path.read_text())
    
@@ -538,7 +560,7 @@ def sign_ballot(arg, hasId=False):
         
     priv_key = RSA.importKey(data['keys']['private_key'].encode())
     signer = PKCS1_v1_5.new(priv_key)
-    h = SHA256.new((arg[0].lower() + userId).encode())
+    h = SHA256.new(sign_data.encode())
     sig = signer.sign(h)
 
     return str(sig)
@@ -612,10 +634,16 @@ def construct_data_for_display():
     path = Path('database/parliaments_img.json')
     c_imgs = json.loads(path.read_text())
     parl = {}
+    parl_count = {}
     for c in constituencies:
 
         tmp = db.get_parliaments_by_constituency(c)
         tmp1 = result['candidates']['parliament'][c]
+
+        try:
+            print(parl_count[c])
+        except:
+            parl_count[c] = 0
 
         parl[c] = []
         for i1 in tmp:
@@ -631,12 +659,13 @@ def construct_data_for_display():
                         'party_name': db.get_party_name(i1[0]),
                         'vote_count': tmp1[i2]
                     })
+                    parl_count[c] += int(tmp1[i2])
                     break
-
+        
     # ========================================
     
 
-    return {'presidents': pres, 'parliaments': parl}
+    return {'presidents': pres, 'parliaments': parl, 'parl_count': parl_count}
 
 def generate_key():
         key = RSA.generate(1024)
@@ -657,9 +686,9 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-p', '--port', default=7000, type=int, help='port to listen on')
-    parser.add_argument('--host', default='127.0.0.1', type=str, help='port to listen on')
+    parser.add_argument('--host', default='0.0.0.0', type=str, help='port to listen on')
     args = parser.parse_args()
     port = args.port
 
 
-    app.run(host='127.0.0.1', port=port, debug=True, threaded = True)
+    app.run(host='0.0.0.0', port=port, threaded = True)

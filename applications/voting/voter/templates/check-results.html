@@ -6,7 +6,7 @@
 
 {% block body %}
 <main id="main" class="main">
-    <div class="card-body pb-0">
+    <div class="card-body pb-0" style="background: #F6F9FF;">
     <h5 class="card-title" style="text-align: center;">ELECTION RESULT</h5>
 
     <div class="container">
@@ -69,7 +69,7 @@
                                         text-align: right;
                                         display: block;
                                         width: 100%;">
-                                            {{ percent(p['vote_count']) + "%" }}
+                                            {{ p_percent(p['vote_count'], data['parl_count']) + "%" }}
                                         </span>
                                     </div>
                                 </div>
@@ -83,7 +83,6 @@
                     <div id="parliament-chart" style="min-height: 400px;" class="echart"></div>
                 </div>
         </div>
-
     </div>
 
     <script>
@@ -120,55 +119,7 @@
             }
             construct_chart('parliament', parl)
 
-            /*for(let i in cands){
-                tmp[i] = []
-
-                for(let j in cands[i]){
-                    for(let k of data.cand_names){
-                        if(+j == +k.id){
-                            tmp[i].push({
-                                value: cands[i][j],
-                                name: k.name
-                            })
-                        }
-                    }
-                }
-            }*/
-            
-
-            /*for(let i in tmp){
-                console.log(tmp[i])
-                echarts.init(document.querySelector("#" + i + "-chart")).setOption({
-                    tooltip: {
-                    trigger: 'item'
-                    },
-                    legend: {
-                    top: '5%',
-                    left: 'center'
-                    },
-                    series: [{
-                    name: i,
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    label: {
-                        show: false,
-                        position: 'center'
-                    },
-                    emphasis: {
-                        label: {
-                        show: true,
-                        fontSize: '18',
-                        fontWeight: 'bold'
-                        }
-                    },
-                    labelLine: {
-                        show: false
-                    },
-                    data: tmp[i]
-                    }]
-                });
-            }*/
+        
 
             function construct_chart(tgt, arr){
                 console.log(arr)

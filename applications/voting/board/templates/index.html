@@ -7,7 +7,7 @@
   {%endblock%}
 
   {% block subbody%}
-
+  
 
   <main id="main" class="main">
 
@@ -76,9 +76,10 @@
                 <div class="col-6">
                   <label for="inputEmail4" class="form-label">Constituency</label>
                   <select id="p_constituency" name="constituency" class="form-select">
-                    <option value=""></option>
-                    <option value="cons1">cons1</option>
-                    <option value="cons2">cons2</option>
+                    <option value="ejisu">Ejisu</option>
+                    <option value="asokwa">Asokwa</option>
+                    <option value="bekwai">Bekwai</option>
+                    <option value="juaben">Juaben</option>
                   </select>
                 </div>
                 <div class="col-6">
@@ -143,7 +144,7 @@
               {% endfor %}  
             </div>
             <div>
-              <button onclick="submitData()" class="btn btn-info btn-block text-white">Submit To RA</button>
+              <button onclick="getEl('party_mod').style.display = 'block'" id="subra" class="btn btn-info btn-block text-white">Submit To RA</button>
             </div>
           </div>
         </div>
@@ -151,8 +152,7 @@
     </div>
     <script>
       var party_data = {
-        party_name: 'party1',
-        party_id: 545,
+        party_name: null,
         presidential: null,
         parliamentary: []
       }
@@ -194,14 +194,14 @@
           }
           party_data.presidential = data
           console.log(party_data)
-          alert('Candidate added Successfully!!')
-          //getEl('id03').display = 'block'
+          getEl('trylate').innerHTML = 'Candidate added Successfully!!'
+          getEl('succ').style.display = 'block'
           getEl('name').value = "";
           getEl('age').value = "";
           getEl('description').value = "";
           getEl('portfolio').value = "";
 
-          getEl('item-pres').innerHTML += `
+          getEl('item-pres').innerHTML = `
                               <div class="mb-3">
                                 <div class="row g-0">
                                   <div class="col-md-4">
@@ -231,33 +231,72 @@
             constituency : getEl('p_constituency').value,
             imgByte : imgByte
           }
-          party_data.parliamentary.push(parl_data)
-          console.log(party_data)
-          
-          alert("Candidate Added Successfully!!");
-          //getEl('id03').display = 'block'
-          getEl('p_name').value = "";
-          getEl('p_age').value = "";
-          getEl('p_description').value = "";
-          getEl('p_constituency').value = "";
+      
+          ind = party_data.parliamentary.findIndex(x=>x.constituency == parl_data.constituency)
 
-          getEl('item-parl').innerHTML += `
+          if(ind == -1){
+            party_data.parliamentary.push(parl_data)
+            console.log(party_data)
+            
+            //alert("Candidate Added Successfully!!");
+            getEl('trylate').innerHTML = 'Candidate Added Successfully!!'
+            getEl('succ').style.display = 'block'
+            //getEl('id03').display = 'block'
+            getEl('p_name').value = "";
+            getEl('p_age').value = "";
+            getEl('p_description').value = "";
+            getEl('p_constituency').value = "";
+
+            getEl('item-parl').innerHTML += `
+                                  <div class="mb-3">
+                                    <div class="row g-0">
+                                      <div class="col-md-4">
+                                        <img src="${parl_data.imgByte}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
+                                      </div>
+                                      <div class="col-md-8">
+                                        <div class="card-body">
+                                          <h3 class="card-title">Name : ${parl_data.name}</h3>
+                                          <p>Age : ${parl_data.age}</p>
+                                          <p>Constituency : ${parl_data.constituency}</p>
+                                          <p class="card-text">Description : ${parl_data.description}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+            `
+          }else{
+            party_data.parliamentary.splice(ind, 1, parl_data)
+            console.log(party_data)
+
+            getEl('trylate').innerHTML = 'Candidate has been replaced Successfully!!'
+            getEl('succ').style.display = 'block'
+            //alert("Candidate has been replaced Successfully!!")
+            getEl('p_name').value = "";
+            getEl('p_age').value = "";
+            getEl('p_description').value = "";
+            getEl('p_constituency').value = "";
+
+            getEl('item-parl').innerHTML = ""
+            for(p of party_data.parliamentary){
+              getEl('item-parl').innerHTML += `
                                 <div class="mb-3">
                                   <div class="row g-0">
                                     <div class="col-md-4">
-                                      <img src="${parl_data.imgByte}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
+                                      <img src="${p.imgByte}" class="img-fluid rounded-start" style="max-height:400px" alt="...">
                                     </div>
                                     <div class="col-md-8">
                                       <div class="card-body">
-                                        <h3 class="card-title">Name : ${parl_data.name}</h3>
-                                        <p>Age : ${parl_data.age}</p>
-                                        <p>Constituency : ${parl_data.constituency}</p>
-                                        <p class="card-text">Description : ${parl_data.description}</p>
+                                        <h3 class="card-title">Name : ${p.name}</h3>
+                                        <p>Age : ${p.age}</p>
+                                        <p>Constituency : ${p.constituency}</p>
+                                        <p class="card-text">Description : ${p.description}</p>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
-          `
+              `
+            }
+          }
       }
       function isValid(){
         let isvalid = true
@@ -279,6 +318,9 @@
       }
       
       function submitData(){
+
+        party_data['party_name'] = getEl('party_name').value;
+
         fetch('/submit-data',{
             method: "POST",
             mode: "cors",
@@ -290,12 +332,60 @@
           .then(x=>x.json())
           .then(x=>{
             console.log(x)
-            alert("Submitted Successfully")
+            getEl('party_mod').style.display = 'none';
+            getEl('succ').style.display = 'block';
+            getEl('trylate').innerHTML = 'Data Submitted Successfully!!'
+            getEl('subra').disabled = true
+
           })
           .catch(e=>console.log(e))
       }
     </script>
+    <div id="succ" style="
+    background-color: gray;
+    opacity: 0.8;
+    display: none;
+    position: fixed!important;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 100%;
+    background: transparent;
+    height: 800px;
+    ">
+      <div  class="card alert alert-info" style="margin-left: 15%">
+        <div class="card-header" style="font-size: 25px">
+            Information
+        </div>
+        <div class="card-body">
+            <p id="trylate" class="card-text"></p>
+            <button onclick="getEl('succ').style.display='none'" class="btn btn-danger">Exit</button>
+        </div>
+      </div>
+    </div>
 
+    <div id="party_mod" style="
+    background-color: gray;
+    display: none;
+    position: fixed!important;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 100%;
+    background: transparent;
+    height: 800px;
+    ">
+      <div  class="card alert alert-info" style="margin-left: 15%">
+        <div class="card-header" style="font-size: 25px;margin-bottom:3px">
+            Please Provide Party Name
+        </div>
+        <div class="card-body">
+            <h3 id="submit_message"></h3>
+            <input class="form-control" placeholder='Party Name' type="text" id="party_name" name="party_name">
+            <button onclick="submitData()" class="btn btn-danger">Submit</button>
+        </div>
+      </div>
+    </div>
   </main>
   
   {%endblock%}

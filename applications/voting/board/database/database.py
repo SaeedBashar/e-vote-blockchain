@@ -73,3 +73,16 @@ def add_candidate(portfolio, arg):
         with sqlite3.connect(db_path) as conn:
             conn.execute(query, arg)
             conn.commit()
+
+# def add_party_info(arg):
+#     query = "INSERT INTO Party_info VALUES(?, ?)"
+
+#     with sqlite3.connect(db_path) as conn:
+#         conn.execute(query, arg)
+#         conn.commit()
+
+# def get_party_info():
+#     query = "SELECT * FROM Party_info"
+#     with sqlite3.connect(db_path) as conn:
+#         cursor = conn.execute(query)
+#         return cursor.fetchall()

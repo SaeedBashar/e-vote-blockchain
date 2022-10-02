@@ -1,4 +1,6 @@
+import random
 from urllib import response
+from uuid import uuid4
 from flask import Flask, session
 from flask import render_template, redirect, request, jsonify, g
 from math import *
@@ -32,12 +34,22 @@ def cxt_proc():
     
     def percent(el):
         if result_data !=  None:
-            return str(round((el/int(result_data['total_votes'])) * int(100),1))
+            if result_data['total_votes'] == 0:
+                total = 1
+            else:
+                total = result_data['total_votes']
+
+            return str(round((el/int(total)) * int(100),1))
+
+    def parl_percent(el, total):  
+        if total == 0:
+            total = 1
+        return str(round((el/int(total)) * int(100),1))
 
     def remove_space(el):
         return el.replace(' ', '')
     
-    return {'upper': toUpper, 'percent': percent, 'r_space': remove_space}
+    return {'upper': toUpper, 'percent': percent, 'r_space': remove_space, 'p_percent': parl_percent}
 
 @app.route('/')
 def home():
@@ -63,7 +75,10 @@ def login():
 
         if data['status'] == True:
             if 'message' not in data:
-                response = requests.post('http://127.0.0.1:7000/user-get-info', json={'id': data['id']}).json()
+                x = uuid4()
+                sign_id = str(x).replace('-', '')
+                session['sign_id'] = sign_id
+                response = requests.post('http://127.0.0.1:7000/user-get-info', json={'id': data['id'], 'sign_id': sign_id}).json()
                 if response['status'] == True:
                     if 'message' not in response:
                         keys = gen_key()
@@ -130,8 +145,7 @@ def submit_ballot():
     transaction['args'][0]['action'] = 'vote_cast'
     
     transaction['args'][0]['sign_data'] = [
-        session['uname'],
-        session['uid'],
+        session['sign_id']
     ]
     transaction['args'][0]['sign_data'].extend(list(voted_candidates.values()))
 
@@ -142,7 +156,7 @@ def submit_ballot():
                             'ballot_info': {
                                             'constituency': session['constituency'],
                                             'signature': session['SIGNATURE'], 
-                                            'sign_data': transaction['args'][0]['sign_data']
+                                            'sign_data': [session['sign_id']]
                                         }
                             })
     
@@ -166,8 +180,10 @@ def leave():
     
 @app.route('/get-result')
 def get_results():
-    
-    response = requests.get('http://127.0.0.1:7000/get-result-for-user?constituency=cons1')
+    # const = ['ejisu', 'asokwa', 'bekwai', 'juaben']
+    # x = random.randint(0,3)
+    response = requests.get('http://127.0.0.1:7000/get-result-for-user?constituency=%s' % session['constituency'])
+    # response = requests.get('http://127.0.0.1:7000/get-result-for-user?constituency=%s' % const[x])
     try:
         response = response.json()
 
@@ -243,4 +259,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='0.0.0.0', port=port, debug = True, threaded = True)
+    app.run(host='0.0.0.0', port=port, threaded = True)
