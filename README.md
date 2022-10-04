@@ -86,9 +86,11 @@ In this application, there are only two portfolio, 'President and Parliament(for
 
 8. To vote, a user has to login to be verified since only elible voters are required to take part of the election. The RA maintains a list of voters who are elible to vote.
 
-9. A voter logs in, gets verified and the RA generates a signed ballot paper(contains information about the candiates) for the voter. Each voter has a unique ballot signed by the RA which would be verify by the smart contract on submitted to prevent the forgery of ballot papers by the unlawful entities.
+9. A voter logs in, gets verified and the RA generates a signed ballot paper(contains information about the candidates) for the voter. Each voter has a unique ballot signed by the RA which would be verify by the smart contract on submitted to prevent the forgery of ballot papers by the unlawful entities.
 
 10. Voters are supposed to vote within the allocated time, since the system does not accept any transaction to a smart contract that has expired.
 
-11. Once the election is over, the RA, the board members and the voters can view the election the election results
+11. Once the election is over, the RA, the board members and the voters can view the election results
+
+
 

@@ -52,7 +52,7 @@ def contract(action='init', args=[], state={}):
                     {
                         'party_id': '12f35da8cd444cba91e050745ee069f2',
                         'party_name': 'People Development Party',
-                        'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8eJT73n2Hmnmx2hBy2Jtly6yi\nrQiefLvjtwwEY9QZ36qzaNolI/7DlrrLluZ+bS1vGdGk5hCiZHhE1zhbbGQO+5Xl\n6OfVQI08j+EGUm7Q/pgZiEpOCqUihcRTRjSYSuX1RuHSCF0EzzpoI2Nr5PMe1gSK\nU+CbglD8P5nRRkJxmwIDAQAB\n-----END PUBLIC KEY-----""",
+                        'public_key': """-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCc2odxMDBonfTMLJ0haDnWfqAe\nJ1F90BkVgx0rCz46Y9Q8MK0Bv0fyFEubrELu5JpnC/HKDhiGUEVniBvoQTuytOrW\nD7izEpLb/J04GDu+AS50OmC41hgAjYpAsdArXmF+JH8V3Bbri/ALSuLwx7+u6isF\nZtGPYuzjRfBxemHarQIDAQAB\n-----END PUBLIC KEY-----""",
                         'approved': False
                     }
                 ]

@@ -180,16 +180,16 @@ class Node(threading.Thread):
 
                 sock.send((self.public_key + ":" + str(self.port)).encode('utf-8')) 
                 connected_node_pk = sock.recv(4096).decode('utf-8')
-                for node in self.nodes_inbound:
-                    # for node in self.connected_nodes:
-                    if node.address == address and node.pk == connected_node_pk:
-                        self.log(f"[EXISTING CONNECTION]: Already connected to node {address}:{port}")
-                        sock.send("[CLOSING]: Closing, connection exist already".encode('utf-8'))
-                        sock.close()
-                        return {
-                                "status": False,
-                                "msg": f"[EXISTING CONNECTION]: Already connected to node {address}:{port}"
-                            }
+                # for node in self.nodes_inbound:
+                #     # for node in self.connected_nodes:
+                #     if node.address == address and node.pk == connected_node_pk:
+                #         self.log(f"[EXISTING CONNECTION]: Already connected to node {address}:{port}")
+                #         sock.send("[CLOSING]: Closing, connection exist already".encode('utf-8'))
+                #         sock.close()
+                #         return {
+                #                 "status": False,
+                #                 "msg": f"[EXISTING CONNECTION]: Already connected to node {address}:{port}"
+                #             }
                 thread_client = self.create_new_connection(sock, connected_node_pk, address, port)
                 thread_client.start()
                 self.nodes_outbound.append(thread_client)

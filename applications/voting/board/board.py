@@ -11,12 +11,14 @@ import json
 import codecs
 import requests
 import os
+import ast
 
 import Crypto
 import Crypto.Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
+from Crypto.Cipher import PKCS1_OAEP
 
 from database import database as db
 
@@ -31,6 +33,7 @@ PARTY_NAME = None
 
 RA_ip = global_data['reg_auth_ip']
 RA_port = global_data['reg_auth_port']
+RA_pk = global_data['reg_public_key']
 miner_ip = global_data['miner_ip']
 miner_port = global_data['miner_port']
 # =====================================================
@@ -240,6 +243,7 @@ def home():
 def submit_data():
     # ===========================
     data = request.get_json()
+    
 
     # x = uuid4()
     # id = str(x).replace('-', '')
@@ -278,9 +282,48 @@ def submit_data():
     # ===========================
    
 
+    
+    # other_info = {
+    #     "pres_img": data['presidential']['imgByte'],
+    #     "parl_imgs": []
+    # }
     data['board_address'] = db.get_user((session['u_name'], session['password']))[0][5]
+    
+    # for p in data['parliamentary']:
+    #     other_info['parl_imgs'].append({
+    #         'constituency':  p['constituency'],
+    #         'imgByte': p['imgByte'] 
+    #     })
+        
+    # data['presidential'].pop('imgByte')
+    # for p in data['parliamentary']:
+    #     p.pop('imgByte')
+        
+    # Encrypt data and send to RA
+    # =============================
+    # def enc_data(arg):
+    #     pub = RSA.importKey(RA_pk)
+    #     encryptor = PKCS1_OAEP.new(pub)
+    #     encrypted = encryptor.encrypt(arg.encode())
+    #     return encrypted
+    
+    # data['party_id'] = enc_data(data['party_id'])
+    # data['party_name'] = enc_data(data['party_name'])
+    # # data['board_address'] = enc_data(data['board_address'])
+    # data['presidential'] = enc_data(json.dumps(data['presidential']))
+    
+    # temp = []
+    # for p in data['parliamentary']:
+    #     temp.append(enc_data(json.dumps(p)))
+        
+    # data['parliamentary'] = temp
+    # =============================
+    # data_to_send = {
+    #     "data": data,
+    #     "other_info": other_info
+    # }
+    
     res = requests.post(f"http://{RA_ip}:{RA_port}/submit-candidates", json=data).json()
-
     global ELECTION_ADDRESS
     ELECTION_ADDRESS = res['election_address']
     

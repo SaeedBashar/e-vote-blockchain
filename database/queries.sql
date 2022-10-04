@@ -55,6 +55,12 @@ CREATE TABLE IF NOT EXISTS "State" (
 	"storage"	TEXT,
 	PRIMARY KEY("public_key")
 );
+INSERT INTO "mined_transactions" ("block_index","from_addr","to_addr","value","gas","args","timestamps","tx_hash") VALUES (0,NULL,'-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC9NGmSYdh1s0OpYgiVWQ+YEdx6
+lSXm4b78fJrlBxbx7DoNXjuluX+KdIm6zzsb40HbTwBJT3n53BSC981Cx28z7tUp
+ujO3dSGt8rIQsitb5pl5yTgcaggyD/xYriNDZsU8sP2AdEUlLs2Xg/ap5OHII0dh
+hSQXq0JuWAJUFG0gqQIDAQAB
+-----END PUBLIC KEY-----',0,0,'["Initial Blockchain Transaction"]','1640995200.0','3c3145cc66f5e9dcb469ad7ca232ec4ac56ad489a5c8ecbc68ad34f7d5b1b6eb');
 INSERT INTO "Profile" ("name","email","u_name","password","private_key","public_key") VALUES ('John Smith','smith@gmail.com','John','1234','-----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQCrtZvN0y9WOQaEtxlcjMg+uA+Edc3JVBAVQkkC4LDSBmjw73l6
 ircSRFG+gRlleyY5iRt3ug7mkQddw1YB5rctdwnxQRJezdSrKcluraWqfn/+MghB
@@ -75,4 +81,11 @@ dc3JVBAVQkkC4LDSBmjw73l6ircSRFG+gRlleyY5iRt3ug7mkQddw1YB5rctdwnx
 QRJezdSrKcluraWqfn/+MghB3BXb9qstENn5HE4o8AARXaRVvDhuG8i3fC/TcPG/
 Wn8eJ4tz/S4TxgBx5QIDAQAB
 -----END PUBLIC KEY-----');
+INSERT INTO "Chain" ("ind","timestamp","data","difficulty","merkle_root","prev_hash","nonce","hash") VALUES (0,'1640995200.0','[{"from_addr": null, "to_addr": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC9NGmSYdh1s0OpYgiVWQ+YEdx6\nlSXm4b78fJrlBxbx7DoNXjuluX+KdIm6zzsb40HbTwBJT3n53BSC981Cx28z7tUp\nujO3dSGt8rIQsitb5pl5yTgcaggyD/xYriNDZsU8sP2AdEUlLs2Xg/ap5OHII0dh\nhSQXq0JuWAJUFG0gqQIDAQAB\n-----END PUBLIC KEY-----", "value": 0, "gas": 0, "args": "[\"Initial Blockchain Transaction\"]", "timestamp": 1640995200.0, "tx_hash": "3c3145cc66f5e9dcb469ad7ca232ec4ac56ad489a5c8ecbc68ad34f7d5b1b6eb"}]',4,'ec9af1b70eec9eebfb5a31876becb83c93461d3e34d31792cd54a4854e7c682f','0000000000000000000000000000000000000000000000000000000000000000',30089,'0000ba46b5ba0a16f78724142118dcf1795a1c09edcd084adf1a2198cbfaf1b9');
+INSERT INTO "State" ("public_key","balance","body","used_timestamps","storage") VALUES ('-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC9NGmSYdh1s0OpYgiVWQ+YEdx6
+lSXm4b78fJrlBxbx7DoNXjuluX+KdIm6zzsb40HbTwBJT3n53BSC981Cx28z7tUp
+ujO3dSGt8rIQsitb5pl5yTgcaggyD/xYriNDZsU8sP2AdEUlLs2Xg/ap5OHII0dh
+hSQXq0JuWAJUFG0gqQIDAQAB
+-----END PUBLIC KEY-----',0,'','[]','{}');
 COMMIT;

@@ -11,12 +11,14 @@ import codecs
 import requests
 import os
 from uuid import uuid4
+import ast
 
 import Crypto
 import Crypto.Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
+from Crypto.Cipher import PKCS1_OAEP
 
 from database import database as db
 
@@ -283,64 +285,66 @@ def create_election():
 
 @app.route('/get-contract-transactions')
 def get_cont_transactions():
-
-    addr =  db.get_election()[0][1]
+    if 'name' in session:
+        addr =  db.get_election()[0][1]
+        
+        response = requests.get(f'http://{MINER_NODES[0]}/api/contract-transactions?address={addr}')
+        response = response.json()
+        
+        # ===========================
     
-    response = requests.get(f'http://{MINER_NODES[0]}/api/contract-transactions?address={addr}')
-    response = response.json()
-    
-    # ===========================
-   
-    temp = db.get_presidents()
-    pres = []
-    # ========================================
-    for p in temp:
-        pres.append({
-            'id': p[1],
-            'name': p[2],
-            'portfolio': p[3]
-        })
-
-    parl = {}
-    for c in constituencies:
-        tmp = db.get_parliaments_by_constituency(c)
-       
-        parl[c] = []
-        for i1 in tmp:
-            parl[c].append({
-                'id': i1[1],
-                'name': i1[2],
-                'constituency': i1[4]
+        temp = db.get_presidents()
+        pres = []
+        # ========================================
+        for p in temp:
+            pres.append({
+                'id': p[1],
+                'name': p[2],
+                'portfolio': p[3]
             })
 
-    # ===========================
-   
-    data = {
-        'presidents': pres,
-        'parliaments': parl,
-        'transactions': response
-    }
-    return render_template('contract-transactions.html', data=data)
+        parl = {}
+        for c in constituencies:
+            tmp = db.get_parliaments_by_constituency(c)
+        
+            parl[c] = []
+            for i1 in tmp:
+                parl[c].append({
+                    'id': i1[1],
+                    'name': i1[2],
+                    'constituency': i1[4]
+                })
+
+        # ===========================
+    
+        data = {
+            'presidents': pres,
+            'parliaments': parl,
+            'transactions': response
+        }
+        return render_template('contract-transactions.html', data=data)
+    return redirect('/login')
 
 @app.route('/check-results')
 def check_results():
+    if 'name' in session:
+        data = {
+            'contract_addr': db.get_election()[0][1]
+        }
+        
+        response = requests.post(f'http://{MINER_NODES[0]}/get-contract-result', json=data)
+        response = response.json()
+        if response['status'] == True:
 
-    data = {
-        'contract_addr': db.get_election()[0][1]
-    }
+            db.update_election(response['contract_result'])
+
+            ret_data = construct_data_for_display()
+
+            return render_template('check-results.html', data=ret_data)
+        else:
+            return render_template('result-not-ready.html')
+    return redirect('/login')
     
-    response = requests.post(f'http://{MINER_NODES[0]}/get-contract-result', json=data)
-    response = response.json()
-    if response['status'] == True:
-
-        db.update_election(response['contract_result'])
-
-        ret_data = construct_data_for_display()
-
-        return render_template('check-results.html', data=ret_data)
-    else:
-        return render_template('result-not-ready.html')
-
 @app.route('/get-result')
 def get_result():
     
@@ -357,8 +361,6 @@ def logout():
     session.pop('name', None)
 
     return redirect('/')
-
-
 
 
 # ====================================
@@ -496,8 +498,48 @@ def user_get_info():
 
 @app.route('/submit-candidates', methods=["POST"])
 def party_data():
-    data = request.get_json()
-
+    res_data = request.get_json()
+    
+    # ret_data = db.get_registrar((session['u_name'], session['password']))
+    # # Decrypt the encrypted data by board members
+    # # ===========================================
+    # def dec_data(arg):
+    #     priv = RSA.importKey(ret_data[0][4])
+    #     decryptor = PKCS1_OAEP.new(priv)
+    #     decrypted = decryptor.decrypt(ast.literal_eval(str(arg)))
+    #     return decrypted
+    
+    # temp = res_data['data']
+    # temp['party_id'] = dec_data(temp['party_id'])
+    # temp['party_name'] = dec_data(temp['party_name'])
+    # temp['presidential'] = dec_data(temp['presidential'])
+    
+    # temp1 = []
+    # for p in temp['parliamentary']:
+    #     temp1.append(dec_data(p))
+        
+    # temp['parliamentary'] = temp1
+    # # ===========================================
+    
+    # temp['board_address'] = res_data['other_info']['board_address']
+    
+    # temp['presidential']['imgByte'] = res_data['other_info']['pres_img']
+    
+    # for i in res_data['other_info']['parl_imgs']:
+    #     for p in data['parliamentary']:
+    #         if i['constituency'] == p['constituency']:
+    #             p['imgByte'] = i['imgByte']
+    #             break
+    
+    # data = temp
+    
+    # # Decrypt Data Sent By Board Members
+    # # ==================================
+    # priv = RSA.importKey(ret_data[0][4])
+    # decryptor = PKCS1_OAEP.new(priv)
+    # data = decryptor.decrypt(ast.literal_eval(str(encrypted)))
+    # # ==================================
+    
     ret_data = db.get_parties()
     is_submitted = False
     for x in ret_data:
@@ -542,23 +584,22 @@ def party_data():
         return jsonify({'status': True, 'election_address': addr})
 
 
-
-
 # ==========================================================
 # UTILITY FUNCTIONS
 
 def sign_ballot(arg, hasId=False, sign_data=''):
-    path = Path('database/data.json')
-    data = json.loads(path.read_text())
-   
+    # path = Path('database/data.json')
+    # data = json.loads(path.read_text())
+    
+    ret_data = db.get_registrar((session['u_name'], session['password']))
+
     if not hasId:
         userId = Crypto.Random.new().read(64).hex()
         db.insert_voter_id(userId, arg)
     else:
-        print(arg)
         userId = db.get_data('voterId', arg)
         
-    priv_key = RSA.importKey(data['keys']['private_key'].encode())
+    priv_key = RSA.importKey(ret_data[0][4].encode())
     signer = PKCS1_v1_5.new(priv_key)
     h = SHA256.new(sign_data.encode())
     sig = signer.sign(h)
@@ -566,13 +607,14 @@ def sign_ballot(arg, hasId=False, sign_data=''):
     return str(sig)
 
 def verify_ballot(arg):
-    path = Path('database/data.json')
-    data = json.loads(path.read_text())
+    # path = Path('database/data.json')
+    # data = json.loads(path.read_text())
+    ret_data = db.get_registrar((session['u_name'], session['password']))
 
     id = db.get_data('voterId', arg)
     h = SHA256.new((arg[0] + id).encode())
     try:
-        pub_key = RSA.importKey(data['supported_keys']['public_key'].encode())
+        pub_key = RSA.importKey(ret_data[0][5].encode())
         verifier = PKCS1_v1_5.new(pub_key)
 
         verifier.verify(h)
